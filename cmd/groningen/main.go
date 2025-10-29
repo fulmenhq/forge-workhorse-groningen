@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/cmd"
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/server/handlers"
 )
 
 // Version information set via ldflags during build
@@ -17,6 +18,9 @@ var (
 func main() {
 	// Set version info for commands to access
 	cmd.SetVersionInfo(version, commit, buildDate)
+
+	// Set version info for HTTP handlers
+	handlers.SetVersionInfo(version, commit, buildDate)
 
 	// Execute root command
 	if err := cmd.Execute(); err != nil {
