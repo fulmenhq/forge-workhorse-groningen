@@ -31,6 +31,13 @@ var serveCmd = &cobra.Command{
 		logLevel := viper.GetString("logging.level")
 		observability.InitServerLogger("groningen", logLevel)
 
+		// Initialize metrics
+		if err := observability.InitMetrics("groningen"); err != nil {
+			observability.ServerLogger.Error("Failed to initialize metrics",
+				zap.Error(err))
+			return fmt.Errorf("metrics initialization failed: %w", err)
+		}
+
 		observability.ServerLogger.Info("Initializing groningen server",
 			zap.String("version", versionInfo.Version),
 			zap.String("host", serverHost),

@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
+	servermw "github.com/fulmenhq/forge-workhorse-groningen/internal/server/middleware"
 )
 
 // Server represents the HTTP server
@@ -29,6 +30,9 @@ func New(host string, port int) *Server {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
+
+	// Our custom middleware
+	r.Use(servermw.RequestMetrics)
 
 	s := &Server{
 		router: r,

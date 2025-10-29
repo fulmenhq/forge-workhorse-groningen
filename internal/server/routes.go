@@ -11,4 +11,7 @@ func (s *Server) registerRoutes() {
 
 	// Version endpoint
 	s.router.Get("/version", handlers.VersionHandler)
+
+	// Metrics endpoint
+	s.router.Get("/metrics", handlers.MetricsHandler)
 }
