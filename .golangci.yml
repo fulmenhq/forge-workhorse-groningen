@@ -1,0 +1,80 @@
+run:
+  timeout: 5m
+  go: "1.23"
+  tests: true
+  skip-dirs:
+    - testdata
+    - bin
+
+linters:
+  enable:
+    - errcheck      # Check error handling
+    - gosimple      # Simplify code
+    - govet         # Go vet
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Advanced static analysis
+    - typecheck     # Type checking
+    - unused        # Detect unused code
+    - gofmt         # Format checking
+    - goimports     # Import organization
+    - misspell      # Spell checking
+    - revive        # Drop-in replacement for golint
+    - gosec         # Security checks
+    - bodyclose     # Check HTTP response body closed
+    - noctx         # Find sending http request without context.Context
+    - unparam       # Reports unused function parameters
+  disable:
+    - exhaustive    # Can be too strict
+    - exhaustruct   # Can be too strict
+    - gochecknoglobals
+    - gochecknoinits
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+    exclude-functions:
+      - (io.Closer).Close
+      - (*os.File).Close
+
+  govet:
+    check-shadowing: true
+    enable-all: true
+
+  revive:
+    confidence: 0.8
+    rules:
+      - name: exported
+        severity: warning
+        disabled: false
+      - name: package-comments
+        severity: warning
+        disabled: false
+
+  gosec:
+    excludes:
+      - G104 # Audit errors not checked - errcheck covers this
+
+  staticcheck:
+    checks: ["all"]
+
+  gofmt:
+    simplify: true
+
+  goimports:
+    local-prefixes: github.com/fulmenhq/forge-workhorse-groningen
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gosec
+        - unparam
+    # Exclude shadow checking for err variables (common Go pattern)
+    - text: "shadow: declaration of \"err\""
+      linters:
+        - govet
