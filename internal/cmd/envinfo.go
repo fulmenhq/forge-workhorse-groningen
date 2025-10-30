@@ -6,7 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
 
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
 	"github.com/fulmenhq/gofulmen/crucible"
 )
 
@@ -17,44 +19,47 @@ var envInfoCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		version := crucible.GetVersion()
 
-		fmt.Println("=== Groningen Environment Information ===\n")
+		observability.CLILogger.Info("=== Groningen Environment Information ===")
+		observability.CLILogger.Info("")
 
 		// Application Info
-		fmt.Println("Application:")
-		fmt.Printf("  Name:       groningen\n")
-		fmt.Printf("  Version:    %s\n", versionInfo.Version)
-		fmt.Printf("  Commit:     %s\n", versionInfo.Commit)
-		fmt.Printf("  Built:      %s\n", versionInfo.BuildDate)
-		fmt.Println()
+		observability.CLILogger.Info("Application:")
+		observability.CLILogger.Info("  Name:       groningen")
+		observability.CLILogger.Info("  Version:    " + versionInfo.Version)
+		observability.CLILogger.Info("  Commit:     " + versionInfo.Commit)
+		observability.CLILogger.Info("  Built:      " + versionInfo.BuildDate)
+		observability.CLILogger.Info("")
 
 		// SSOT Info
-		fmt.Println("SSOT:")
-		fmt.Printf("  Gofulmen:   %s\n", version.Gofulmen)
-		fmt.Printf("  Crucible:   %s\n", version.Crucible)
-		fmt.Println()
+		observability.CLILogger.Info("SSOT:")
+		observability.CLILogger.Info("  Gofulmen:   "+version.Gofulmen, zap.String("gofulmen_version", version.Gofulmen))
+		observability.CLILogger.Info("  Crucible:   "+version.Crucible, zap.String("crucible_version", version.Crucible))
+		observability.CLILogger.Info("")
 
 		// Runtime Info
-		fmt.Println("Runtime:")
-		fmt.Printf("  Go Version: %s\n", runtime.Version())
-		fmt.Printf("  GOOS:       %s\n", runtime.GOOS)
-		fmt.Printf("  GOARCH:     %s\n", runtime.GOARCH)
-		fmt.Printf("  NumCPU:     %d\n", runtime.NumCPU())
-		fmt.Println()
+		observability.CLILogger.Info("Runtime:")
+		observability.CLILogger.Info("  Go Version: "+runtime.Version(), zap.String("go_version", runtime.Version()))
+		observability.CLILogger.Info("  GOOS:       "+runtime.GOOS, zap.String("goos", runtime.GOOS))
+		observability.CLILogger.Info("  GOARCH:     "+runtime.GOARCH, zap.String("goarch", runtime.GOARCH))
+		observability.CLILogger.Info(fmt.Sprintf("  NumCPU:     %d", runtime.NumCPU()), zap.Int("num_cpu", runtime.NumCPU()))
+		observability.CLILogger.Info("")
 
 		// Configuration
-		fmt.Println("Configuration:")
-		fmt.Printf("  Server Host:    %s\n", viper.GetString("server.host"))
-		fmt.Printf("  Server Port:    %d\n", viper.GetInt("server.port"))
-		fmt.Printf("  Log Level:      %s\n", viper.GetString("logging.level"))
-		fmt.Printf("  Log Profile:    %s\n", viper.GetString("logging.profile"))
-		fmt.Printf("  Metrics Port:   %d\n", viper.GetInt("metrics.port"))
-		fmt.Printf("  Config File:    %s\n", viper.ConfigFileUsed())
-		if viper.ConfigFileUsed() == "" {
-			fmt.Printf("                  (using defaults and environment variables)\n")
+		observability.CLILogger.Info("Configuration:")
+		observability.CLILogger.Info("  Server Host:    "+viper.GetString("server.host"), zap.String("host", viper.GetString("server.host")))
+		observability.CLILogger.Info(fmt.Sprintf("  Server Port:    %d", viper.GetInt("server.port")), zap.Int("port", viper.GetInt("server.port")))
+		observability.CLILogger.Info("  Log Level:      "+viper.GetString("logging.level"), zap.String("log_level", viper.GetString("logging.level")))
+		observability.CLILogger.Info("  Log Profile:    "+viper.GetString("logging.profile"), zap.String("log_profile", viper.GetString("logging.profile")))
+		observability.CLILogger.Info(fmt.Sprintf("  Metrics Port:   %d", viper.GetInt("metrics.port")), zap.Int("metrics_port", viper.GetInt("metrics.port")))
+		configFile := viper.ConfigFileUsed()
+		if configFile == "" {
+			observability.CLILogger.Info("  Config File:    (using defaults and environment variables)")
+		} else {
+			observability.CLILogger.Info("  Config File:    "+configFile, zap.String("config_file", configFile))
 		}
-		fmt.Println()
+		observability.CLILogger.Info("")
 
-		fmt.Println("=== End Environment Information ===")
+		observability.CLILogger.Info("=== End Environment Information ===")
 	},
 }
 

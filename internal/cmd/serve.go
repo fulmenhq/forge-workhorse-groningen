@@ -91,6 +91,6 @@ func init() {
 	serveCmd.Flags().StringVar(&serverHost, "host", "localhost", "server host")
 	serveCmd.Flags().IntVarP(&serverPort, "port", "p", 8080, "server port")
 
-	viper.BindPFlag("server.host", serveCmd.Flags().Lookup("host"))
-	viper.BindPFlag("server.port", serveCmd.Flags().Lookup("port"))
+	_ = viper.BindPFlag("server.host", serveCmd.Flags().Lookup("host"))
+	_ = viper.BindPFlag("server.port", serveCmd.Flags().Lookup("port"))
 }

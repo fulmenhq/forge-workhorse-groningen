@@ -1,12 +1,13 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
 	"github.com/fulmenhq/gofulmen/crucible"
 )
 
@@ -15,61 +16,61 @@ var doctorCmd = &cobra.Command{
 	Short: "Run diagnostic checks",
 	Long:  "Run diagnostic checks on the system and suggest fixes for common issues.",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("=== Groningen Doctor ===\n")
-		fmt.Println("Running diagnostic checks...\n")
+		observability.CLILogger.Info("=== Groningen Doctor ===")
+		observability.CLILogger.Info("")
+		observability.CLILogger.Info("Running diagnostic checks...")
+		observability.CLILogger.Info("")
 
 		allChecks := true
 
 		// Check 1: Go version
-		fmt.Printf("[1/5] Checking Go version... ")
 		goVersion := runtime.Version()
 		if goVersion >= "go1.23" {
-			fmt.Printf("✅ %s\n", goVersion)
+			observability.CLILogger.Info("[1/5] Checking Go version... ✅ "+goVersion, zap.String("go_version", goVersion))
 		} else {
-			fmt.Printf("⚠️  %s (recommended: go1.23+)\n", goVersion)
+			observability.CLILogger.Warn("[1/5] Checking Go version... ⚠️  "+goVersion+" (recommended: go1.23+)", zap.String("go_version", goVersion))
 			allChecks = false
 		}
 
 		// Check 2: Crucible access
-		fmt.Printf("[2/5] Checking Crucible access... ")
 		version := crucible.GetVersion()
 		if version.Crucible != "" {
-			fmt.Printf("✅ v%s\n", version.Crucible)
+			observability.CLILogger.Info("[2/5] Checking Crucible access... ✅ v"+version.Crucible, zap.String("crucible_version", version.Crucible))
 		} else {
-			fmt.Printf("❌ Cannot access Crucible\n")
+			observability.CLILogger.Error("[2/5] Checking Crucible access... ❌ Cannot access Crucible")
 			allChecks = false
 		}
 
 		// Check 3: Gofulmen access
-		fmt.Printf("[3/5] Checking Gofulmen access... ")
 		if version.Gofulmen != "" {
-			fmt.Printf("✅ v%s\n", version.Gofulmen)
+			observability.CLILogger.Info("[3/5] Checking Gofulmen access... ✅ v"+version.Gofulmen, zap.String("gofulmen_version", version.Gofulmen))
 		} else {
-			fmt.Printf("❌ Cannot access Gofulmen\n")
+			observability.CLILogger.Error("[3/5] Checking Gofulmen access... ❌ Cannot access Gofulmen")
 			allChecks = false
 		}
 
 		// Check 4: Config directory
-		fmt.Printf("[4/5] Checking config directory... ")
 		configDir, err := os.UserConfigDir()
 		if err != nil {
-			fmt.Printf("⚠️  Cannot find config directory\n")
+			observability.CLILogger.Warn("[4/5] Checking config directory... ⚠️  Cannot find config directory", zap.Error(err))
 			allChecks = false
 		} else {
-			fmt.Printf("✅ %s\n", configDir)
+			observability.CLILogger.Info("[4/5] Checking config directory... ✅ "+configDir, zap.String("config_dir", configDir))
 		}
 
 		// Check 5: Environment
-		fmt.Printf("[5/5] Checking environment... ")
-		fmt.Printf("✅ %s/%s\n", runtime.GOOS, runtime.GOARCH)
+		observability.CLILogger.Info("[5/5] Checking environment... ✅ "+runtime.GOOS+"/"+runtime.GOARCH,
+			zap.String("os", runtime.GOOS),
+			zap.String("arch", runtime.GOARCH))
 
-		fmt.Println()
+		observability.CLILogger.Info("")
 		if allChecks {
-			fmt.Println("✅ All checks passed! Your groningen installation is healthy.")
+			observability.CLILogger.Info("✅ All checks passed! Your groningen installation is healthy.")
 		} else {
-			fmt.Println("⚠️  Some checks failed. Review the output above for details.")
+			observability.CLILogger.Warn("⚠️  Some checks failed. Review the output above for details.")
 		}
-		fmt.Println("\n=== End Diagnostics ===")
+		observability.CLILogger.Info("")
+		observability.CLILogger.Info("=== End Diagnostics ===")
 	},
 }
 

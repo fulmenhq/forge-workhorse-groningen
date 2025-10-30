@@ -35,7 +35,7 @@ func RequestMetrics(next http.Handler) http.Handler {
 		duration := time.Since(start)
 
 		// Emit counter
-		observability.TelemetrySystem.Counter(
+		_ = observability.TelemetrySystem.Counter(
 			"http_requests_total",
 			1,
 			map[string]string{
@@ -46,7 +46,7 @@ func RequestMetrics(next http.Handler) http.Handler {
 		)
 
 		// Emit histogram for duration
-		observability.TelemetrySystem.Histogram(
+		_ = observability.TelemetrySystem.Histogram(
 			"http_request_duration_ms",
 			duration,
 			map[string]string{

@@ -7,11 +7,13 @@ This document describes the test suites for forge-workhorse-groningen, with spec
 ## Running Tests
 
 ### All Tests
+
 ```bash
 go test -v ./...
 ```
 
 ### Specific Package Tests
+
 ```bash
 # Gofulmen integration tests
 go test -v ./internal/observability/...
@@ -24,6 +26,7 @@ go test -v ./internal/cmd/...
 ```
 
 ### With Coverage
+
 ```bash
 make test-cov
 ```
@@ -39,12 +42,14 @@ make test-cov
 **Test Cases:**
 
 #### `TestGofulmenIntegration`
+
 - ✅ CLI logger creation (SIMPLE profile)
 - ✅ Structured logger creation (STRUCTURED profile)
 - ✅ Logger with verbose/DEBUG mode
 - ✅ Structured profile with correlation middleware
 
 #### `TestEmbeddedCrucible`
+
 - ✅ Crucible version access
 - ✅ Crucible version string formatting
 - ✅ Schema registry access
@@ -52,10 +57,12 @@ make test-cov
 - ✅ Config registry access
 
 #### `TestGofulmenCrucibleIntegration`
+
 - ✅ Logger uses crucible schemas for validation
 - ✅ Logger with crucible version in logs
 
 **Expected Output:**
+
 ```
 PASS: TestGofulmenIntegration
 PASS: TestEmbeddedCrucible
@@ -84,16 +91,19 @@ As implementation progresses, we'll add:
 ## Test Conventions
 
 ### 1. Naming
+
 - Test files: `*_test.go`
 - Test functions: `TestFunctionName`
 - Subtests: Use `t.Run("description", func(t *testing.T) { ... })`
 
 ### 2. Package Naming
+
 - Use `package_test` for external/black-box tests
 - Use `package` for internal/white-box tests
 - Example: `observability_test` vs `observability`
 
 ### 3. Test Structure
+
 ```go
 func TestFeature(t *testing.T) {
     t.Run("specific case", func(t *testing.T) {
@@ -110,6 +120,7 @@ func TestFeature(t *testing.T) {
 ```
 
 ### 4. Logging in Tests
+
 - Use `t.Log()` or `t.Logf()` for informational output
 - Use `t.Error()` or `t.Errorf()` for non-fatal failures
 - Use `t.Fatal()` or `t.Fatalf()` for fatal failures
@@ -119,11 +130,13 @@ func TestFeature(t *testing.T) {
 These tests verify core functionality that must never break:
 
 ### ✅ Gofulmen Embedded Crucible
+
 **File:** `internal/observability/gofulmen_test.go`
 **Why Critical:** Ensures the foundational dependency embedding works correctly.
 **Must Pass:** Always, on every commit.
 
 **What it verifies:**
+
 - Crucible schemas accessible via gofulmen
 - Version information correct
 - Registry access working
@@ -149,17 +162,21 @@ These tests verify core functionality that must never break:
 ## Test Data
 
 ### Fixtures
+
 Location: `testdata/fixtures/`
 
 Use for:
+
 - Sample configuration files
 - Mock request/response data
 - Schema examples
 
 ### Golden Files
+
 Location: `testdata/golden/`
 
 Use for:
+
 - Expected output snapshots
 - Regression testing
 - Output format validation
@@ -167,6 +184,7 @@ Use for:
 ## Continuous Integration
 
 When CI/CD is added, all tests will run on:
+
 - Pull requests
 - Main branch commits
 - Release tags
@@ -197,5 +215,6 @@ When CI/CD is added, all tests will run on:
 ## Documentation
 
 For detailed test results and verification, see:
+
 - `.plans/gofulmen-integration-test-results.md` - Gofulmen v0.1.7 verification
 - Individual test files for inline documentation

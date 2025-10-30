@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
@@ -18,26 +16,25 @@ var healthCmd = &cobra.Command{
 
 		// Check 1: Version info available
 		if versionInfo.Version == "" {
-			observability.CLILogger.Error("Version information not available")
-			fmt.Println("❌ FAIL: Version information missing")
+			observability.CLILogger.Error("❌ FAIL: Version information missing")
 			return
 		}
 		observability.CLILogger.Debug("Version check passed", zap.String("version", versionInfo.Version))
-		fmt.Println("✅ Version information available")
+		observability.CLILogger.Info("✅ Version information available")
 
 		// Check 2: Logger initialized
 		if observability.CLILogger == nil {
-			fmt.Println("❌ FAIL: Logger not initialized")
+			observability.CLILogger.Error("❌ FAIL: Logger not initialized")
 			return
 		}
-		fmt.Println("✅ Logger initialized")
+		observability.CLILogger.Info("✅ Logger initialized")
 
 		// Check 3: Configuration loaded
-		fmt.Println("✅ Configuration system ready")
+		observability.CLILogger.Info("✅ Configuration system ready")
 
 		// Overall status
-		fmt.Println("\n✅ All health checks passed")
-		observability.CLILogger.Info("Health check completed successfully")
+		observability.CLILogger.Info("")
+		observability.CLILogger.Info("✅ All health checks passed")
 	},
 }
 

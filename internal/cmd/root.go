@@ -46,8 +46,8 @@ This template provides:
 - CLI commands for server management and diagnostics
 
 Use the subcommands to perform specific operations.`,
-	SilenceUsage:  true,  // Don't show usage on errors
-	SilenceErrors: true,  // We'll handle error output ourselves
+	SilenceUsage:  true, // Don't show usage on errors
+	SilenceErrors: true, // We'll handle error output ourselves
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -88,7 +88,6 @@ func initConfig() {
 				observability.CLILogger.Error("Could not find home directory", zap.Error(err))
 				os.Exit(1)
 			}
-			configDir = home
 			viper.AddConfigPath(home)
 			viper.SetConfigName(".groningen")
 		} else {

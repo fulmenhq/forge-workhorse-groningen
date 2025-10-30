@@ -48,6 +48,7 @@ make run
 ```
 
 The server will start at `http://localhost:8080` with:
+
 - Health checks: `http://localhost:8080/health/*`
 - Version info: `http://localhost:8080/version`
 - Metrics: `http://localhost:9090/metrics`
@@ -189,12 +190,14 @@ golangci-lint run --fix
 To create your own application from this template:
 
 1. **Clone** the template:
+
    ```bash
    git clone https://github.com/fulmenhq/forge-workhorse-groningen.git my-app
    cd my-app
    ```
 
 2. **Degit** (remove template git history):
+
    ```bash
    rm -rf .git
    git init
@@ -228,6 +231,7 @@ Uses gofulmen's progressive logging profiles:
 - **ENTERPRISE**: Full envelope with middleware, throttling, policy enforcement
 
 Configure via:
+
 - Config file: `logging.profile: "structured"`
 - Environment: `GRONINGEN_LOG_LEVEL=debug`
 - CLI flag: `--verbose`
