@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/fulmenhq/gofulmen/appidentity"
+	"github.com/fulmenhq/gofulmen/foundry"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -84,8 +84,7 @@ func initConfig() {
 	ctx := context.Background()
 	identity, err := appidentity.Get(ctx)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to load app identity: %v\n", err)
-		os.Exit(1)
+		ExitWithCodeStderr(foundry.ExitFileNotFound, "Failed to load app identity from .fulmen/app.yaml", err)
 	}
 	appIdentity = identity
 
@@ -105,8 +104,7 @@ func initConfig() {
 			// Fall back to home directory
 			home, err := os.UserHomeDir()
 			if err != nil {
-				observability.CLILogger.Error("Could not find home directory", zap.Error(err))
-				os.Exit(1)
+				ExitWithCode(observability.CLILogger, foundry.ExitFileNotFound, "Could not find home directory", err)
 			}
 			viper.AddConfigPath(home)
 			viper.SetConfigName("." + appIdentity.ConfigName)

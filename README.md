@@ -326,6 +326,65 @@ curl -X POST http://localhost:8080/admin/signal \
 
 **Security**: Only expose admin endpoint on internal networks. Use strong token. Consider IP allowlisting.
 
+### Exit Codes
+
+Groningen uses standardized exit codes from the Foundry catalog for operational clarity and better shell scripting support:
+
+| Code | Name          | When                                                               |
+| ---- | ------------- | ------------------------------------------------------------------ |
+| 0    | Success       | Command completed successfully                                     |
+| 1    | Failure       | Generic failure (default for unspecified errors)                   |
+| 30   | ConfigInvalid | Configuration file is invalid or logger initialization failed      |
+| 50   | FileNotFound  | Required file not found (e.g., `.fulmen/app.yaml`, home directory) |
+
+**Usage in Shell Scripts:**
+
+```bash
+# Check exit codes for automation
+groningen health
+if [ $? -eq 0 ]; then
+    echo "Service is healthy"
+elif [ $? -eq 63 ]; then
+    echo "Service unavailable"
+fi
+
+# Handle specific failures
+groningen serve
+exit_code=$?
+case $exit_code in
+    0)
+        echo "Server stopped cleanly"
+        ;;
+    30)
+        echo "Configuration error - check config file"
+        ;;
+    50)
+        echo "Missing required file - check .fulmen/app.yaml"
+        ;;
+    *)
+        echo "Server error (exit code: $exit_code)"
+        ;;
+esac
+```
+
+**Exit Code Metadata:**
+
+All exit codes include metadata in error logs (code, name, description, category) to help with troubleshooting. When a fatal error occurs, you'll see:
+
+```
+FATAL: Failed to load app identity from .fulmen/app.yaml: file not found
+Exit Code: 50 (FileNotFound) - Required file not found
+```
+
+**Future Exit Codes:**
+
+As additional features are added, more semantic exit codes may be introduced:
+
+- `40` (InvalidArgument) - Invalid command-line arguments
+- `51` (PermissionDenied) - Permission denied errors
+- `62` (NetworkError) - Network connectivity issues
+- `63` (ServiceUnavailable) - Service or dependency unavailable
+
 ## Standard Endpoints
 
 ### Health Checks

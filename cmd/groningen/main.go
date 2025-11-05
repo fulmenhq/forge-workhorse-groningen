@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
+
+	"github.com/fulmenhq/gofulmen/foundry"
 
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/cmd"
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/server/handlers"
@@ -24,6 +27,11 @@ func main() {
 
 	// Execute root command
 	if err := cmd.Execute(); err != nil {
-		os.Exit(1)
+		// Command execution failed - use generic failure code
+		// Individual commands may have already logged specific errors
+		info, _ := foundry.GetExitCodeInfo(foundry.ExitFailure)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Exit Code: %d (%s)\n", info.Code, info.Name)
+		os.Exit(info.Code)
 	}
 }

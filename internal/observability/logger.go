@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/fulmenhq/gofulmen/foundry"
 	"github.com/fulmenhq/gofulmen/logging"
 )
 
@@ -20,8 +21,7 @@ func InitCLILogger(serviceName string, verbose bool) {
 	// Use the simplified NewCLI helper for CLI logging
 	logger, err := logging.NewCLI(serviceName)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to initialize CLI logger: %v\n", err)
-		os.Exit(1)
+		exitWithCodeStderr(foundry.ExitConfigInvalid, "Failed to initialize CLI logger", err)
 	}
 
 	// Set level to DEBUG if verbose
@@ -73,8 +73,7 @@ func InitServerLogger(serviceName string, logLevel string, namespace ...string) 
 
 	logger, err := logging.New(config)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to initialize server logger: %v\n", err)
-		os.Exit(1)
+		exitWithCodeStderr(foundry.ExitConfigInvalid, "Failed to initialize server logger", err)
 	}
 
 	ServerLogger = logger
@@ -96,4 +95,29 @@ func parseLogLevel(levelStr string) string {
 	default:
 		return "INFO"
 	}
+}
+
+// exitWithCodeStderr exits with a semantic exit code, writing to stderr.
+// This is a local helper for logger initialization failures before CLI logger is available.
+func exitWithCodeStderr(exitCode foundry.ExitCode, msg string, err error) {
+	info, ok := foundry.GetExitCodeInfo(exitCode)
+	if !ok {
+		// Fallback if we can't get exit code info
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "FATAL: %s: %v (exit code: %d)\n", msg, err, exitCode)
+		} else {
+			fmt.Fprintf(os.Stderr, "FATAL: %s (exit code: %d)\n", msg, exitCode)
+		}
+		os.Exit(int(exitCode))
+	}
+
+	// Write to stderr with exit code metadata
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "FATAL: %s: %v\n", msg, err)
+	} else {
+		fmt.Fprintf(os.Stderr, "FATAL: %s\n", msg)
+	}
+	fmt.Fprintf(os.Stderr, "Exit Code: %d (%s) - %s\n", info.Code, info.Name, info.Description)
+
+	os.Exit(info.Code)
 }
