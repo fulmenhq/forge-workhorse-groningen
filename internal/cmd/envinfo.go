@@ -23,8 +23,9 @@ var envInfoCmd = &cobra.Command{
 		observability.CLILogger.Info("")
 
 		// Application Info
+		identity := GetAppIdentity()
 		observability.CLILogger.Info("Application:")
-		observability.CLILogger.Info("  Name:       groningen")
+		observability.CLILogger.Info("  Name:       " + identity.BinaryName)
 		observability.CLILogger.Info("  Version:    " + versionInfo.Version)
 		observability.CLILogger.Info("  Commit:     " + versionInfo.Commit)
 		observability.CLILogger.Info("  Built:      " + versionInfo.BuildDate)

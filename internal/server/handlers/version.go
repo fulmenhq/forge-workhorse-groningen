@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"runtime"
 
+	"github.com/fulmenhq/gofulmen/appidentity"
 	"github.com/fulmenhq/gofulmen/crucible"
 )
 
@@ -13,6 +14,7 @@ var (
 	AppVersion   = "dev"
 	AppCommit    = "unknown"
 	AppBuildDate = "unknown"
+	appIdentity  *appidentity.Identity
 )
 
 // SetVersionInfo sets the version information for the handler
@@ -20,6 +22,11 @@ func SetVersionInfo(version, commit, buildDate string) {
 	AppVersion = version
 	AppCommit = commit
 	AppBuildDate = buildDate
+}
+
+// SetAppIdentity sets the app identity for the handler
+func SetAppIdentity(identity *appidentity.Identity) {
+	appIdentity = identity
 }
 
 // VersionResponse represents the version information response
@@ -52,9 +59,17 @@ type RuntimeInfo struct {
 func VersionHandler(w http.ResponseWriter, r *http.Request) {
 	version := crucible.GetVersion()
 
+	// Use app identity if set, otherwise fallback to default
+	identity := appIdentity
+	if identity == nil {
+		identity = &appidentity.Identity{
+			BinaryName: "groningen",
+		}
+	}
+
 	response := VersionResponse{
 		App: AppInfo{
-			Name:      "groningen",
+			Name:      identity.BinaryName,
 			Version:   AppVersion,
 			Commit:    AppCommit,
 			BuildDate: AppBuildDate,

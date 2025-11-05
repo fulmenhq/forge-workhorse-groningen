@@ -13,6 +13,7 @@ import (
 
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/server"
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/server/handlers"
 )
 
 var (
@@ -56,6 +57,9 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 
 		// Create server
 		srv := server.New(serverHost, serverPort)
+
+		// Set app identity for handlers
+		handlers.SetAppIdentity(identity)
 
 		// Get shutdown timeout from config
 		shutdownTimeout := viper.GetDuration("server.shutdown_timeout")
