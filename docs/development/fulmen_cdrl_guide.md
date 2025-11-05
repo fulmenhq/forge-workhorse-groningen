@@ -1,0 +1,225 @@
+# CDRL Guide: Refitting forge-workhorse-groningen
+
+This guide explains how to customize the forge-workhorse-groningen template for your own application using the CDRL (Clone → Degit → Refit → Launch) workflow.
+
+## CDRL Workflow Overview
+
+1. **Clone**: `git clone` the template repository
+2. **Degit**: Remove git history to start fresh
+3. **Refit**: Customize the template for your application
+4. **Launch**: Run your customized application
+
+## Step-by-Step Refitting
+
+### Step 1: Clone the Template
+
+```bash
+git clone https://github.com/fulmenhq/forge-workhorse-groningen.git my-app
+cd my-app
+```
+
+### Step 2: Degit (Remove Git History)
+
+```bash
+rm -rf .git
+git init
+```
+
+### Step 3: Refit (Customize for Your App)
+
+#### 3.1 Update App Identity (Most Important)
+
+Edit `.fulmen/app.yaml` to match your application:
+
+```yaml
+# Update these values for your application
+vendor: mycompany          # Your organization
+binary_name: myapi         # Your application name  
+service_type: workhorse     # Keep this for workhorse templates
+env_prefix: MYAPI          # Your env var prefix (uppercase)
+config_name: myapi         # Your config file name
+description: "My API service for processing data"
+version: 1.0.0
+```
+
+**Why this matters**: The app identity file controls:
+- Environment variable prefixes (`MYAPI_*` instead of `GRONINGEN_*`)
+- Configuration file paths (`~/.config/mycompany/myapi.yaml`)
+- Telemetry namespaces in logs and metrics
+- Binary name in CLI help and HTTP responses
+
+#### 3.2 Update Module Path
+
+Edit `go.mod`:
+```go
+module github.com/mycompany/myapi
+```
+
+#### 3.3 Update Environment Variables
+
+Copy `.env.example` to `.env` and customize:
+```bash
+# Your app will now use MYAPI_* prefix
+MYAPI_PORT=8080
+MYAPI_HOST=localhost
+MYAPI_LOG_LEVEL=info
+```
+
+#### 3.4 Update Configuration Files
+
+Rename config files to match your identity:
+```bash
+mv config/groningen.yaml config/myapi.yaml
+```
+
+#### 3.5 Customize Application Logic
+
+Replace placeholder business logic in `internal/core/`:
+```bash
+# Remove template examples
+rm -rf internal/core/
+
+# Add your business logic
+mkdir -p internal/core
+# Add your handlers, services, models here
+```
+
+#### 3.6 Update Documentation
+
+Update `README.md`:
+- Change "groningen" to your app name
+- Update description and examples
+- Add your own usage instructions
+
+Update CLI command descriptions in `internal/cmd/*.go`:
+```go
+// Before
+Short: "Start the HTTP server"
+
+// After  
+Short: "Start the My API HTTP server"
+```
+
+#### 3.7 Update Metadata
+
+Update these files:
+- `LICENSE`: Choose your license
+- `MAINTAINERS.md`: Add your maintainers
+- `README.md`: Your app's documentation
+
+### Step 4: Launch Your Application
+
+```bash
+# Install dependencies
+make bootstrap
+
+# Run your application
+make run
+
+# Or build and run
+make build
+./bin/myapi serve
+```
+
+## Verification Checklist
+
+After refitting, verify these work:
+
+- [ ] App identity loads from `.fulmen/app.yaml`
+- [ ] Environment variables use your prefix (`MYAPI_*`)
+- [ ] Config file loads from correct path
+- [ ] CLI shows your app name in help
+- [ ] HTTP `/version` endpoint shows your app name
+- [ ] Logs use your telemetry namespace
+- [ ] Tests pass with `make test`
+
+## Common Refitting Patterns
+
+### Web API Service
+```yaml
+vendor: acme
+binary_name: user-service
+env_prefix: USERSVC
+config_name: user-service
+description: "User management API service"
+```
+
+### Data Processing Worker
+```yaml
+vendor: datatech
+binary_name: etl-processor
+env_prefix: ETL
+config_name: etl-processor
+description: "ETL data processing worker"
+```
+
+### CLI Tool
+```yaml
+vendor: toolcorp
+binary_name: db-migrator
+env_prefix: DBMIG
+config_name: db-migrator
+description: "Database migration CLI tool"
+```
+
+## Troubleshooting
+
+### App Identity Not Loading
+```bash
+# Check file exists
+ls -la .fulmen/app.yaml
+
+# Validate YAML syntax
+go run github.com/fulmenhq/goneat@latest validate .fulmen/app.yaml
+```
+
+### Environment Variables Not Working
+```bash
+# Check prefix matches app.yaml
+grep env_prefix .fulmen/app.yaml
+env | grep USERSVC  # Should show your vars
+```
+
+### Config File Not Found
+```bash
+# Check expected path
+ls -la ~/.config/yourcompany/yourapp.yaml
+
+# Or specify custom path
+yourapp serve --config ./config/custom.yaml
+```
+
+## Advanced Customization
+
+### Adding New Commands
+1. Create `internal/cmd/mycommand.go`
+2. Add to `rootCmd.AddCommand()` in `init()`
+3. Update `Makefile` if needed
+
+### Adding New HTTP Endpoints
+1. Create handler in `internal/server/handlers/`
+2. Register route in `internal/server/routes.go`
+3. Add middleware if needed
+
+### Custom Configuration
+1. Add config fields to `setDefaults()` in `internal/cmd/root.go`
+2. Update `.env.example` with new variables
+3. Document in README
+
+## Best Practices
+
+1. **Keep App Identity Consistent**: All customization flows from `.fulmen/app.yaml`
+2. **Update Documentation**: Keep README and help text current
+3. **Test Customizations**: Run `make test` after major changes
+4. **Version Management**: Use semantic versioning in app identity
+5. **Security**: Never commit secrets or API keys
+
+## Support
+
+- **Template Issues**: Report to [forge-workhorse-groningen](https://github.com/fulmenhq/forge-workhorse-groningen)
+- **Fulmen Ecosystem**: See [FulmenHQ Documentation](https://fulmenhq.dev)
+- **gofulmen Library**: See [gofulmen](https://github.com/fulmenhq/gofulmen)
+
+---
+
+**Remember**: The goal of CDRL is to make template customization predictable and repeatable. The app identity system ensures most customization happens in one place (`.fulmen/app.yaml`) rather than scattered throughout the codebase.
