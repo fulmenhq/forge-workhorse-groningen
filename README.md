@@ -267,6 +267,65 @@ Prometheus metrics exposed at `/metrics` (default port 9090):
 
 Optional OpenTelemetry integration (TBD).
 
+## Production Reliability
+
+### Graceful Shutdown
+
+Groningen implements production-grade signal handling with graceful shutdown:
+
+```bash
+# Start server
+groningen serve
+
+# Graceful shutdown (SIGINT/SIGTERM)
+# Ctrl+C or kill <pid>
+# - Stops accepting new requests
+# - Completes in-flight requests
+# - Closes database connections
+# - Flushes logs and metrics
+# - Clean exit
+
+# Force quit (double-tap)
+# Press Ctrl+C twice within 2 seconds
+# Immediate exit if shutdown hangs
+```
+
+**Shutdown Sequence** (LIFO order):
+
+1. Stop accepting new connections
+2. Shutdown HTTP server (wait for in-flight requests)
+3. Flush logger (ensure all logs written)
+4. Exit cleanly
+
+### Config Reload
+
+Send SIGHUP to reload configuration without restart:
+
+```bash
+# Send SIGHUP signal
+kill -HUP $(pgrep groningen)
+
+# Note: Currently logs warning - full reload coming soon
+# Restart server to apply config changes
+```
+
+### Admin Endpoint (Optional)
+
+Enable remote signal injection via HTTP (for Kubernetes sidecars, etc.):
+
+```bash
+# Enable by setting admin token
+export GRONINGEN_ADMIN_TOKEN="your-secret-token"
+groningen serve
+
+# Send signal via HTTP
+curl -X POST http://localhost:8080/admin/signal \
+  -H "Authorization: Bearer $GRONINGEN_ADMIN_TOKEN" \
+  -d '{"signal": "SIGHUP"}'
+```
+
+**Security**: Only expose admin endpoint on internal networks. Use strong token. Consider IP allowlisting.
+
 ## Standard Endpoints
 
 ### Health Checks
