@@ -33,14 +33,22 @@ func InitCLILogger(serviceName string, verbose bool) {
 }
 
 // InitServerLogger initializes the server logger with STRUCTURED profile
-func InitServerLogger(serviceName string, logLevel string) {
+// Optional namespace parameter for telemetry integration
+func InitServerLogger(serviceName string, logLevel string, namespace ...string) {
 	level := parseLogLevel(logLevel)
+
+	// Build static fields with optional namespace
+	staticFields := make(map[string]any)
+	if len(namespace) > 0 && namespace[0] != "" {
+		staticFields["namespace"] = namespace[0]
+	}
 
 	config := &logging.LoggerConfig{
 		Profile:      logging.ProfileStructured,
 		DefaultLevel: level,
 		Service:      serviceName,
 		Environment:  "production",
+		StaticFields: staticFields,
 		Middleware: []logging.MiddlewareConfig{
 			{
 				Name:    "correlation",

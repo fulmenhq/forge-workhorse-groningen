@@ -14,9 +14,16 @@ var (
 )
 
 // InitMetrics initializes the telemetry system with Prometheus exporter
-func InitMetrics(serviceName string) error {
-	// Create Prometheus exporter
-	PrometheusExporter = exporters.NewPrometheusExporter(serviceName, ":9090")
+// Optional namespace parameter for telemetry integration
+func InitMetrics(serviceName string, namespace ...string) error {
+	// Use namespace if provided, otherwise use service name
+	metricNamespace := serviceName
+	if len(namespace) > 0 && namespace[0] != "" {
+		metricNamespace = namespace[0]
+	}
+
+	// Create Prometheus exporter with namespace
+	PrometheusExporter = exporters.NewPrometheusExporter(metricNamespace, ":9090")
 
 	// Start Prometheus HTTP server
 	if err := PrometheusExporter.Start(); err != nil {

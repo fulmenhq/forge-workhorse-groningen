@@ -11,6 +11,9 @@ coverage.out
 coverage.html
 *.test
 
+# SBOM artifacts (generated)
+sbom/
+
 # Go workspace
 go.work
 go.work.sum

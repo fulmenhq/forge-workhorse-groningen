@@ -204,13 +204,32 @@ To create your own application from this template:
    ```
 
 3. **Refit** (customize for your app):
-   - Rename `groningen` to `my-app` throughout (binary name, cmd directory)
-   - Update `go.mod`: module path
-   - Update env var prefix: `GRONINGEN_` → `MY_APP_`
-   - Update `config/groningen.yaml` → `config/my-app.yaml`
+
+   **Step 1: Update App Identity** (`.fulmen/app.yaml`)
+
+   ```yaml
+   vendor: mycompany # Your organization
+   binary_name: myapi # Your application name
+   service_type: workhorse # Keep this for workhorse templates
+   env_prefix: MYAPI # Your env var prefix (uppercase)
+   config_name: myapi # Your config file name
+   ```
+
+   **Step 2: Update Module Path**
+   - Update `go.mod`: Change module path to your repository
+   - Example: `module github.com/mycompany/myapi`
+
+   **Step 3: Update Environment Variables**
    - Customize `.env.example` with your variables
+   - No need to rename prefixes - app identity handles this!
+
+   **Step 4: Update Config Files**
+   - Rename `config/groningen.yaml` → `config/myapi.yaml`
+
+   **Step 5: Customize Application**
    - Replace placeholder business logic in `internal/core/`
    - Update `README.md`, `LICENSE`, etc.
+   - Update CLI command descriptions in `internal/cmd/`
 
 4. **Launch**:
    ```bash
@@ -218,7 +237,7 @@ To create your own application from this template:
    make run
    ```
 
-See [docs/development/fulmen_cdrl_guide.md](docs/development/fulmen_cdrl_guide.md) for detailed refitting instructions.
+**Key Benefit**: With App Identity integration, you only need to update `.fulmen/app.yaml` and the codebase automatically uses your new identity for env vars, config paths, and telemetry namespaces!
 
 ## Observability
 

@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"context"
+	"fmt"
 	"os"
 
+	"github.com/fulmenhq/gofulmen/appidentity"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -13,6 +16,9 @@ import (
 var (
 	cfgFile string
 	verbose bool
+
+	// App identity loaded from .fulmen/app.yaml
+	appIdentity *appidentity.Identity
 
 	// Version info set by main package
 	versionInfo struct {
@@ -27,6 +33,11 @@ func SetVersionInfo(version, commit, buildDate string) {
 	versionInfo.Version = version
 	versionInfo.Commit = commit
 	versionInfo.BuildDate = buildDate
+}
+
+// GetAppIdentity returns the loaded app identity (only valid after initConfig)
+func GetAppIdentity() *appidentity.Identity {
+	return appIdentity
 }
 
 // rootCmd represents the base command when called without any subcommands
@@ -69,8 +80,17 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	// Load app identity from .fulmen/app.yaml
+	ctx := context.Background()
+	identity, err := appidentity.Get(ctx)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load app identity: %v\n", err)
+		os.Exit(1)
+	}
+	appIdentity = identity
+
 	// Initialize CLI logger early so we can use it in config loading
-	observability.InitCLILogger("groningen", verbose)
+	observability.InitCLILogger(appIdentity.BinaryName, verbose)
 
 	if cfgFile != "" {
 		// Use config file from flag
@@ -89,12 +109,16 @@ func initConfig() {
 				os.Exit(1)
 			}
 			viper.AddConfigPath(home)
-			viper.SetConfigName(".groningen")
+			viper.SetConfigName("." + appIdentity.ConfigName)
 		} else {
-			// Use XDG config directory
-			appConfigDir := configDir + "/groningen"
+			// Use XDG config directory with app identity
+			appConfigDir := configDir + "/" + appIdentity.ConfigName
 			viper.AddConfigPath(appConfigDir)
 			viper.SetConfigName("config")
+
+			// Also check old location for backward compatibility
+			oldConfigDir := configDir + "/groningen"
+			viper.AddConfigPath(oldConfigDir)
 		}
 
 		// Also search in current directory
@@ -102,8 +126,8 @@ func initConfig() {
 		viper.SetConfigType("yaml")
 	}
 
-	// Read in environment variables with prefix GRONINGEN_
-	viper.SetEnvPrefix("GRONINGEN")
+	// Read in environment variables with prefix from app identity
+	viper.SetEnvPrefix(appIdentity.EnvPrefix)
 	viper.AutomaticEnv()
 
 	// If a config file is found, read it in

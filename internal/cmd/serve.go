@@ -27,18 +27,24 @@ var serveCmd = &cobra.Command{
 	Short: "Start the HTTP server",
 	Long:  "Start the HTTP server with graceful shutdown support. Use Ctrl+C to trigger graceful shutdown.",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Initialize server logger
-		logLevel := viper.GetString("logging.level")
-		observability.InitServerLogger("groningen", logLevel)
+		// Get app identity for telemetry namespace
+		identity := GetAppIdentity()
+		namespace := identity.TelemetryNamespace()
 
-		// Initialize metrics
-		if err := observability.InitMetrics("groningen"); err != nil {
+		// Initialize server logger with namespace
+		logLevel := viper.GetString("logging.level")
+		observability.InitServerLogger(identity.BinaryName, logLevel, namespace)
+
+		// Initialize metrics with namespace
+		if err := observability.InitMetrics(identity.BinaryName, namespace); err != nil {
 			observability.ServerLogger.Error("Failed to initialize metrics",
 				zap.Error(err))
 			return fmt.Errorf("metrics initialization failed: %w", err)
 		}
 
-		observability.ServerLogger.Info("Initializing groningen server",
+		observability.ServerLogger.Info("Initializing server",
+			zap.String("service", identity.BinaryName),
+			zap.String("namespace", namespace),
 			zap.String("version", versionInfo.Version),
 			zap.String("host", serverHost),
 			zap.Int("port", serverPort))

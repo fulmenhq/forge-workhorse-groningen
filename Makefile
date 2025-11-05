@@ -1,4 +1,4 @@
-.PHONY: help bootstrap bootstrap-force tools sync version-bump lint test build build-all clean fmt version check-all precommit prepush run install test-cov
+.PHONY: help bootstrap bootstrap-force tools sync dependencies verify-dependencies version-bump lint test build build-all clean fmt version check-all precommit prepush run install test-cov
 .PHONY: version-set version-bump-major version-bump-minor version-bump-patch release-check release-prepare release-build
 
 # Binary and version information
@@ -25,6 +25,7 @@ help:  ## Show this help message
 	@echo '  bootstrap       - Install external tools (goneat) and dependencies'
 	@echo '  bootstrap-force - Force reinstall external tools'
 	@echo '  tools           - Verify external tools are available'
+	@echo '  dependencies    - Generate SBOM for supply-chain security'
 	@echo '  lint            - Run lint/format/style checks'
 	@echo '  test            - Run all tests'
 	@echo '  build           - Build distributable artifacts'
@@ -82,6 +83,18 @@ tools:  ## Verify external tools are available
 sync:  ## Sync assets from Crucible SSOT (placeholder)
 	@echo "⚠️  Groningen does not consume SSOT assets directly"
 	@echo "✅ Sync target satisfied (no-op)"
+
+dependencies:  ## Generate SBOM for supply-chain security
+	@if ! command -v goneat >/dev/null 2>&1; then \
+		echo "❌ goneat not found. Run 'make bootstrap' first."; \
+		exit 1; \
+	fi
+	@echo "Generating Software Bill of Materials (SBOM)..."
+	@goneat dependencies --sbom --sbom-output sbom/groningen.cdx.json
+	@echo "✅ SBOM generated at sbom/groningen.cdx.json"
+
+verify-dependencies:  ## Alias for dependencies (compatibility)
+	@$(MAKE) dependencies
 
 install:  ## Install dependencies (alias for bootstrap)
 	@$(MAKE) bootstrap
