@@ -4,6 +4,7 @@ import (
 	"os"
 	"runtime"
 
+	"github.com/fulmenhq/gofulmen/foundry"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
@@ -38,6 +39,7 @@ var doctorCmd = &cobra.Command{
 			observability.CLILogger.Info("[2/5] Checking Crucible access... ✅ v"+version.Crucible, zap.String("crucible_version", version.Crucible))
 		} else {
 			observability.CLILogger.Error("[2/5] Checking Crucible access... ❌ Cannot access Crucible")
+			ExitWithCode(observability.CLILogger, foundry.ExitExternalServiceUnavailable, "Cannot access Crucible", nil)
 			allChecks = false
 		}
 
@@ -52,7 +54,8 @@ var doctorCmd = &cobra.Command{
 		// Check 4: Config directory
 		configDir, err := os.UserConfigDir()
 		if err != nil {
-			observability.CLILogger.Warn("[4/5] Checking config directory... ⚠️  Cannot find config directory", zap.Error(err))
+			observability.CLILogger.Error("[4/5] Checking config directory... ❌ Cannot find config directory", zap.Error(err))
+			ExitWithCode(observability.CLILogger, foundry.ExitFileNotFound, "Cannot find config directory", err)
 			allChecks = false
 		} else {
 			observability.CLILogger.Info("[4/5] Checking config directory... ✅ "+configDir, zap.String("config_dir", configDir))

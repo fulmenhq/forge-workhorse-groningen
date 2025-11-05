@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/fulmenhq/gofulmen/foundry"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
@@ -17,6 +18,7 @@ var healthCmd = &cobra.Command{
 		// Check 1: Version info available
 		if versionInfo.Version == "" {
 			observability.CLILogger.Error("❌ FAIL: Version information missing")
+			ExitWithCode(observability.CLILogger, foundry.ExitConfigInvalid, "Version information missing", nil)
 			return
 		}
 		observability.CLILogger.Debug("Version check passed", zap.String("version", versionInfo.Version))
@@ -24,7 +26,8 @@ var healthCmd = &cobra.Command{
 
 		// Check 2: Logger initialized
 		if observability.CLILogger == nil {
-			observability.CLILogger.Error("❌ FAIL: Logger not initialized")
+			// Can't log if logger is nil, so use stderr
+			ExitWithCodeStderr(foundry.ExitConfigInvalid, "Logger not initialized", nil)
 			return
 		}
 		observability.CLILogger.Info("✅ Logger initialized")

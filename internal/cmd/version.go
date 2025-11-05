@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"runtime"
 
-	"github.com/spf13/cobra"
-
 	"github.com/fulmenhq/gofulmen/crucible"
+	"github.com/spf13/cobra"
 )
 
 var extended bool
@@ -15,10 +14,12 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version information",
 	Long:  "Print version information. Use --extended for full details including Crucible and Go versions.",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		identity := GetAppIdentity()
+
 		if extended {
 			// Extended version output
-			fmt.Printf("groningen %s\n", versionInfo.Version)
+			fmt.Printf("%s %s\n", identity.BinaryName, versionInfo.Version)
 			fmt.Printf("Commit: %s\n", versionInfo.Commit)
 			fmt.Printf("Built: %s\n", versionInfo.BuildDate)
 			fmt.Printf("Go: %s\n", runtime.Version())
@@ -30,8 +31,9 @@ var versionCmd = &cobra.Command{
 			fmt.Printf("Crucible: %s\n", version.Crucible)
 		} else {
 			// Basic version output
-			fmt.Printf("groningen %s\n", versionInfo.Version)
+			fmt.Printf("%s %s\n", identity.BinaryName, versionInfo.Version)
 		}
+		return nil
 	},
 }
 
