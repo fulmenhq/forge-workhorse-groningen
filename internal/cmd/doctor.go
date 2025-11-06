@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 
@@ -68,7 +69,8 @@ var doctorCmd = &cobra.Command{
 
 		observability.CLILogger.Info("")
 		if allChecks {
-			observability.CLILogger.Info("✅ All checks passed! Your groningen installation is healthy.")
+			identity := GetAppIdentity()
+			observability.CLILogger.Info(fmt.Sprintf("✅ All checks passed! Your %s installation is healthy.", identity.BinaryName))
 		} else {
 			observability.CLILogger.Warn("⚠️  Some checks failed. Review the output above for details.")
 		}
