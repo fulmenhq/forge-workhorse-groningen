@@ -436,6 +436,12 @@ See [MAINTAINERS.md](../crucible/MAINTAINERS.md) for governance and [DEVELOPMENT
 - [Goneat](https://github.com/fulmenhq/goneat) - DX CLI tool
 - [Technical Manifesto](../crucible/docs/architecture/fulmen-technical-manifesto.md)
 
+### Documentation
+
+- [Template Overview](docs/development/groningen-overview.md) - Comprehensive guide to template architecture and components
+- [Developer Handbook](docs/DEVELOPMENT.md) - Development setup and workflows
+- [Development Guides](docs/development/) - Focused guides for specific topics
+
 ### Standards Applied
 
 - [Fulmen Workhorse Standard](../crucible/docs/architecture/fulmen-forge-workhorse-standard.md)

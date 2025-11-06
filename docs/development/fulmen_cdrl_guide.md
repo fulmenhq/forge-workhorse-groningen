@@ -33,16 +33,17 @@ Edit `.fulmen/app.yaml` to match your application:
 
 ```yaml
 # Update these values for your application
-vendor: mycompany          # Your organization
-binary_name: myapi         # Your application name  
-service_type: workhorse     # Keep this for workhorse templates
-env_prefix: MYAPI          # Your env var prefix (uppercase)
-config_name: myapi         # Your config file name
+vendor: mycompany # Your organization
+binary_name: myapi # Your application name
+service_type: workhorse # Keep this for workhorse templates
+env_prefix: MYAPI # Your env var prefix (uppercase)
+config_name: myapi # Your config file name
 description: "My API service for processing data"
 version: 1.0.0
 ```
 
 **Why this matters**: The app identity file controls:
+
 - Environment variable prefixes (`MYAPI_*` instead of `GRONINGEN_*`)
 - Configuration file paths (`~/.config/mycompany/myapi.yaml`)
 - Telemetry namespaces in logs and metrics
@@ -51,6 +52,7 @@ version: 1.0.0
 #### 3.2 Update Module Path
 
 Edit `go.mod`:
+
 ```go
 module github.com/mycompany/myapi
 ```
@@ -58,6 +60,7 @@ module github.com/mycompany/myapi
 #### 3.3 Update Environment Variables
 
 Copy `.env.example` to `.env` and customize:
+
 ```bash
 # Your app will now use MYAPI_* prefix
 MYAPI_PORT=8080
@@ -68,6 +71,7 @@ MYAPI_LOG_LEVEL=info
 #### 3.4 Update Configuration Files
 
 Rename config files to match your identity:
+
 ```bash
 mv config/groningen.yaml config/myapi.yaml
 ```
@@ -75,6 +79,7 @@ mv config/groningen.yaml config/myapi.yaml
 #### 3.5 Customize Application Logic
 
 Replace placeholder business logic in `internal/core/`:
+
 ```bash
 # Remove template examples
 rm -rf internal/core/
@@ -87,22 +92,25 @@ mkdir -p internal/core
 #### 3.6 Update Documentation
 
 Update `README.md`:
+
 - Change "groningen" to your app name
 - Update description and examples
 - Add your own usage instructions
 
 Update CLI command descriptions in `internal/cmd/*.go`:
+
 ```go
 // Before
 Short: "Start the HTTP server"
 
-// After  
+// After
 Short: "Start the My API HTTP server"
 ```
 
 #### 3.7 Update Metadata
 
 Update these files:
+
 - `LICENSE`: Choose your license
 - `MAINTAINERS.md`: Add your maintainers
 - `README.md`: Your app's documentation
@@ -136,6 +144,7 @@ After refitting, verify these work:
 ## Common Refitting Patterns
 
 ### Web API Service
+
 ```yaml
 vendor: acme
 binary_name: user-service
@@ -145,6 +154,7 @@ description: "User management API service"
 ```
 
 ### Data Processing Worker
+
 ```yaml
 vendor: datatech
 binary_name: etl-processor
@@ -154,6 +164,7 @@ description: "ETL data processing worker"
 ```
 
 ### CLI Tool
+
 ```yaml
 vendor: toolcorp
 binary_name: db-migrator
@@ -165,6 +176,7 @@ description: "Database migration CLI tool"
 ## Troubleshooting
 
 ### App Identity Not Loading
+
 ```bash
 # Check file exists
 ls -la .fulmen/app.yaml
@@ -174,6 +186,7 @@ go run github.com/fulmenhq/goneat@latest validate .fulmen/app.yaml
 ```
 
 ### Environment Variables Not Working
+
 ```bash
 # Check prefix matches app.yaml
 grep env_prefix .fulmen/app.yaml
@@ -181,6 +194,7 @@ env | grep USERSVC  # Should show your vars
 ```
 
 ### Config File Not Found
+
 ```bash
 # Check expected path
 ls -la ~/.config/yourcompany/yourapp.yaml
@@ -192,16 +206,19 @@ yourapp serve --config ./config/custom.yaml
 ## Advanced Customization
 
 ### Adding New Commands
+
 1. Create `internal/cmd/mycommand.go`
 2. Add to `rootCmd.AddCommand()` in `init()`
 3. Update `Makefile` if needed
 
 ### Adding New HTTP Endpoints
+
 1. Create handler in `internal/server/handlers/`
 2. Register route in `internal/server/routes.go`
 3. Add middleware if needed
 
 ### Custom Configuration
+
 1. Add config fields to `setDefaults()` in `internal/cmd/root.go`
 2. Update `.env.example` with new variables
 3. Document in README
