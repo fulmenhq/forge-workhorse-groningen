@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/fulmenhq/gofulmen/appidentity"
@@ -58,6 +57,7 @@ This template provides:
 - CLI commands for server management and diagnostics
 
 Use the subcommands to perform specific operations.`,
+
 	SilenceUsage:  true, // Don't show usage on errors
 	SilenceErrors: true, // We'll handle error output ourselves
 }
@@ -72,7 +72,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	// Global flags
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $XDG_CONFIG_HOME/vendor/config_name/config.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $XDG_CONFIG_HOME/fulmen/groningen/config.yaml)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output (sets log level to debug)")
 
 	// Bind flags to viper
@@ -88,13 +88,6 @@ func initConfig() {
 		ExitWithCodeStderr(foundry.ExitFileNotFound, "Failed to load app identity from .fulmen/app.yaml", err)
 	}
 	appIdentity = identity
-
-	// Update config flag help text with actual identity values
-	configFlag := rootCmd.PersistentFlags().Lookup("config")
-	if configFlag != nil {
-		configFlag.Usage = fmt.Sprintf("config file (default is $XDG_CONFIG_HOME/%s/%s/config.yaml)",
-			identity.Vendor, identity.ConfigName)
-	}
 
 	// Initialize CLI logger early so we can use it in config loading
 	observability.InitCLILogger(appIdentity.BinaryName, verbose)
