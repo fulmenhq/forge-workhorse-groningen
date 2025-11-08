@@ -8,24 +8,12 @@ import (
 	"time"
 
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
+	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
 var metricsProxyClient = &http.Client{
 	Timeout: 5 * time.Second,
-}
-
-func buildMetricsURL(addr string) string {
-	trimmed := strings.TrimSpace(addr)
-	if trimmed == "" {
-		return "http://127.0.0.1:9090/metrics"
-	}
-
-	if strings.HasPrefix(trimmed, "http://") || strings.HasPrefix(trimmed, "https://") {
-		return strings.TrimRight(trimmed, "/") + "/metrics"
-	}
-
-	return fmt.Sprintf("http://%s/metrics", strings.TrimRight(trimmed, "/"))
 }
 
 // MetricsHandler proxies Prometheus metrics from the internal exporter so callers
@@ -37,7 +25,12 @@ func MetricsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metricsURL := buildMetricsURL(exporter.GetAddr())
+	// Build metrics URL using the configured metrics port
+	metricsPort := viper.GetInt("metrics.port")
+	if metricsPort == 0 {
+		metricsPort = 9090
+	}
+	metricsURL := fmt.Sprintf("http://127.0.0.1:%d/metrics", metricsPort)
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, metricsURL, nil)
 	if err != nil {
 		WriteServiceUnavailable(w, "Unable to construct metrics request")

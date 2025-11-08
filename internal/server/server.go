@@ -29,13 +29,15 @@ func New(host string, port int) *Server {
 
 	// Standard chi middleware
 	r.Use(middleware.RealIP)
-	r.Use(middleware.Recoverer)
 
-	// Our custom middleware (recovery, error handling, request ID, then metrics)
-	r.Use(servermw.Recovery)
-	r.Use(servermw.ErrorHandler)
-	r.Use(servermw.RequestID)
-	r.Use(servermw.RequestMetrics)
+	// Our custom middleware in correct order (RequestID → Metrics → Logging → Recovery)
+	r.Use(servermw.RequestID)      // 1. Request ID (early for correlation)
+	r.Use(servermw.RequestMetrics) // 2. Metrics (measure everything)
+	r.Use(servermw.ErrorHandler)   // 3. Error handling (after metrics)
+	r.Use(servermw.Recovery)       // 4. Panic recovery (outermost)
+
+	// Chi's Recoverer is redundant since we have our own Recovery middleware
+	// r.Use(middleware.Recoverer)
 
 	// Standardized error responses
 	r.NotFound(handlers.NotFoundHandler)
@@ -82,4 +84,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 // Handler exposes the underlying router for testing and instrumentation
 func (s *Server) Handler() http.Handler {
 	return s.router
+}
+
+// Port returns the server port for testing
+func (s *Server) Port() int {
+	return s.port
 }
