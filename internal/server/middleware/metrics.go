@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
+	"go.uber.org/zap"
 )
 
 // responseWriter wraps http.ResponseWriter to capture status code
@@ -29,20 +30,25 @@ func RequestMetrics(next http.Handler) http.Handler {
 
 		start := time.Now()
 		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		requestID := GetRequestID(r.Context())
 
 		next.ServeHTTP(wrapped, r)
 
 		duration := time.Since(start)
 
+		// Common labels for all metrics
+		commonLabels := map[string]string{
+			"method":    r.Method,
+			"path":      r.URL.Path,
+			"status":    strconv.Itoa(wrapped.statusCode),
+			"requestID": requestID,
+		}
+
 		// Emit counter
 		_ = observability.TelemetrySystem.Counter(
 			"http_requests_total",
 			1,
-			map[string]string{
-				"method": r.Method,
-				"path":   r.URL.Path,
-				"status": strconv.Itoa(wrapped.statusCode),
-			},
+			commonLabels,
 		)
 
 		// Emit histogram for duration
@@ -50,9 +56,22 @@ func RequestMetrics(next http.Handler) http.Handler {
 			"http_request_duration_ms",
 			duration,
 			map[string]string{
-				"method": r.Method,
-				"path":   r.URL.Path,
+				"method":    r.Method,
+				"path":      r.URL.Path,
+				"status":    strconv.Itoa(wrapped.statusCode),
+				"requestID": requestID,
 			},
 		)
+
+		// Log request with request ID for tracing
+		if observability.ServerLogger != nil {
+			observability.ServerLogger.Info("HTTP request completed",
+				zap.String("method", r.Method),
+				zap.String("path", r.URL.Path),
+				zap.Int("status", wrapped.statusCode),
+				zap.Duration("duration", duration),
+				zap.String("requestID", requestID),
+			)
+		}
 	})
 }

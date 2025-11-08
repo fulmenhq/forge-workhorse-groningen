@@ -29,29 +29,29 @@ Level 0: Crucible (SSOT - schemas, standards, docs)
 
 ### Prerequisites
 
-- Go 1.23+ ([install](https://go.dev/doc/install))
+- Go 1.25+ ([install](https://go.dev/doc/install))
 - golangci-lint ([install](https://golangci-lint.run/welcome/install/))
 - Access to gofulmen (local at `../gofulmen`)
 
 ### Bootstrap
 
 ```bash
-# Clone the template
+# Clone template
 git clone https://github.com/fulmenhq/forge-workhorse-groningen.git my-app
 cd my-app
 
 # Install dependencies (including gofulmen from local path)
 make bootstrap
 
-# Run the server
+# Run server
 make run
 ```
 
 The server will start at `http://localhost:8080` with:
 
-- Health checks: `http://localhost:8080/health/*`
+- Health checks: `http://localhost:8080/health/*` (live, ready, startup)
 - Version info: `http://localhost:8080/version`
-- Metrics: `http://localhost:9090/metrics`
+- Metrics: `http://localhost:8080/metrics` (JSON) and `http://localhost:9090/metrics` (Prometheus)
 
 ## Architecture
 
@@ -92,7 +92,7 @@ forge-workhorse-groningen/
 
 ### Dependencies
 
-- **gofulmen v0.1.5** - Fulmen helper library (config, logging, telemetry, etc.)
+- **gofulmen v0.1.8** - Fulmen helper library (config, logging, telemetry, etc.)
 - **goneat v0.3.0** - Optional DX tooling
 - **cobra** - CLI framework (Fulmen standard for Go)
 - **viper** - Configuration management
@@ -102,21 +102,17 @@ forge-workhorse-groningen/
 
 ```bash
 # Server management
-groningen serve                 # Start HTTP server
-groningen serve --port 9000     # Custom port
+workhorse serve                 # Start HTTP server
+workhorse serve --port 9000     # Custom port
 
 # Information commands
-groningen version               # Basic version
-groningen version --extended    # Full version + SSOT info
-groningen health                # Self-check
-groningen envinfo               # Dump config/env/SSOT
+workhorse version               # Basic version
+workhorse version --extended    # Full version + SSOT info
+workhorse health                # Self-check
+workhorse envinfo               # Dump config/env/SSOT
 
 # Diagnostics
-groningen doctor                # Run checks, suggest fixes
-
-# Configuration
-groningen config show           # Display current config
-groningen config validate       # Validate config file
+workhorse doctor                # Run checks, suggest fixes
 ```
 
 ## Configuration
@@ -131,13 +127,14 @@ Priority: CLI flags > Environment variables > Config file > Crucible defaults
 
 ### Environment Variables
 
-All env vars use the prefix `GRONINGEN_`:
+All env vars use the prefix from app identity (default: `GRONINGEN_`):
 
 ```bash
 GRONINGEN_PORT=8080
 GRONINGEN_HOST=localhost
 GRONINGEN_LOG_LEVEL=info
 GRONINGEN_METRICS_PORT=9090
+GRONINGEN_ADMIN_TOKEN=your-secret-token  # For admin endpoint
 # ... see .env.example for full list
 ```
 
@@ -257,11 +254,14 @@ Configure via:
 
 ### Metrics
 
-Prometheus metrics exposed at `/metrics` (default port 9090):
+Prometheus metrics exposed at `/metrics` (JSON endpoint on port 8080, Prometheus format on port 9090):
 
 - `http_requests_total` - Total HTTP requests by method/path/status
-- `http_request_duration_seconds` - Request latency histogram
+- `http_request_duration_ms` - Request latency histogram
+- Request ID correlation for tracing
 - Standard Go runtime metrics (goroutines, memory, etc.)
+
+**Request ID Correlation**: Every request gets a unique X-Request-ID header for tracing and debugging.
 
 ### Tracing
 
@@ -303,10 +303,10 @@ Send SIGHUP to reload configuration without restart:
 
 ```bash
 # Send SIGHUP signal
-kill -HUP $(pgrep groningen)
+kill -HUP $(pgrep workhorse)
 
-# Note: Currently logs warning - full reload coming soon
-# Restart server to apply config changes
+# Config reload attempts to re-read config file and apply changes
+# Some changes may still require restart (e.g., port changes)
 ```
 
 ### Admin Endpoint (Optional)
@@ -316,7 +316,7 @@ Enable remote signal injection via HTTP (for Kubernetes sidecars, etc.):
 ```bash
 # Enable by setting admin token
 export GRONINGEN_ADMIN_TOKEN="your-secret-token"
-groningen serve
+workhorse serve
 
 # Send signal via HTTP
 curl -X POST http://localhost:8080/admin/signal \
@@ -341,7 +341,7 @@ Groningen uses standardized exit codes from the Foundry catalog for operational 
 
 ```bash
 # Check exit codes for automation
-groningen health
+workhorse health
 if [ $? -eq 0 ]; then
     echo "Service is healthy"
 elif [ $? -eq 63 ]; then
@@ -349,7 +349,7 @@ elif [ $? -eq 63 ]; then
 fi
 
 # Handle specific failures
-groningen serve
+workhorse serve
 exit_code=$?
 case $exit_code in
     0)
@@ -389,39 +389,61 @@ As additional features are added, more semantic exit codes may be introduced:
 
 ### Health Checks
 
-- `GET /health/live` - Liveness probe (200 if process is running)
-- `GET /health/ready` - Readiness probe (200 if ready to serve traffic)
-- `GET /health/startup` - Startup probe (200 when initialization complete)
+- `GET /health` – Aggregate of all registered checks with semantic status (`healthy`, `degraded`, `unhealthy`). Returns `503` when any dependency is unhealthy.
+- `GET /health/live` – Liveness probe with fast timeout to ensure the process is still running.
+- `GET /health/ready` – Readiness probe that ensures telemetry, signal handlers, and identity have finished initializing.
+- `GET /health/startup` – Confirms initialization completed; useful for Kubernetes startup probes.
+
+Each response includes version metadata, RFC3339 timestamps, and per-check statuses to simplify debugging.
 
 ### Version Information
 
-- `GET /version` - Version info (app version, Crucible version, build info)
+- `GET /version` – Returns app identity (binary name, semantic version), git commit, build date, Go runtime info, and the embedded gofulmen/Crucible dependency versions pulled directly from the SSOT.
 
 ### Metrics
 
-- `GET /metrics` - Prometheus metrics export
+- `GET /metrics` – Exposes full Prometheus/OpenMetrics output in `text/plain; version=0.0.4` format by proxying the internal gofulmen exporter. Scrape this endpoint from the main HTTP port; it automatically respects the configured metrics port/namespace.
+
+### Standardized Errors
+
+All non-2xx responses use a consistent JSON envelope:
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "The requested resource was not found"
+  }
+}
+```
+
+These helpers are wired into the chi router for 404/405 cases and can be reused by downstream handlers for custom errors.
 
 ## Current Status
 
-🚧 **Work in Progress** - Foundation complete, implementing commands and server
+✅ **v0.1.0 Complete** - Production-ready workhorse template
 
 - [x] Project structure and dependencies
 - [x] Root command with global flags
 - [x] Configuration management (viper + three-layer pattern)
-- [ ] Serve command (HTTP server with chi)
-- [ ] Health endpoints
-- [ ] Version endpoint
-- [ ] Metrics endpoint with Prometheus
-- [ ] Graceful shutdown
-- [ ] Version command (basic + extended)
-- [ ] Health command (CLI self-check)
-- [ ] Envinfo command
-- [ ] Doctor command
-- [ ] Config subcommands
-- [ ] Integration with gofulmen logging
-- [ ] Integration with gofulmen telemetry
-- [ ] Comprehensive tests
-- [ ] Documentation
+- [x] Serve command (HTTP server with chi)
+- [x] Health endpoints (live, ready, startup)
+- [x] Version endpoint (full build info)
+- [x] Metrics endpoint with Prometheus
+- [x] Graceful shutdown with signal handling
+- [x] Version command (basic + extended)
+- [x] Health command (CLI self-check)
+- [x] Envinfo command
+- [x] Doctor command
+- [x] App Identity integration
+- [x] Exit codes with semantic meanings
+- [x] Request ID correlation middleware
+- [x] Standardized error handling
+- [x] Config reload via SIGHUP
+- [x] Integration with gofulmen logging
+- [x] Integration with gofulmen telemetry
+- [x] Comprehensive tests
+- [x] Documentation
 
 ## Contributing
 

@@ -1,31 +1,93 @@
 package handlers
 
 import (
-	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
+	"go.uber.org/zap"
 )
 
-// MetricsResponse represents basic metrics information
-type MetricsResponse struct {
-	Status           string `json:"status"`
-	MetricsAvailable bool   `json:"metricsAvailable"`
-	PrometheusPort   int    `json:"prometheusPort"`
-	Message          string `json:"message"`
+var metricsProxyClient = &http.Client{
+	Timeout: 5 * time.Second,
 }
 
-// MetricsHandler serves basic metrics information
-// Full Prometheus metrics are available on port 9090/metrics
-func MetricsHandler(w http.ResponseWriter, r *http.Request) {
-	response := MetricsResponse{
-		Status:           "ok",
-		MetricsAvailable: observability.TelemetrySystem != nil,
-		PrometheusPort:   9090,
-		Message:          "Full Prometheus metrics available at http://localhost:9090/metrics",
+func buildMetricsURL(addr string) string {
+	trimmed := strings.TrimSpace(addr)
+	if trimmed == "" {
+		return "http://127.0.0.1:9090/metrics"
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(response)
+	if strings.HasPrefix(trimmed, "http://") || strings.HasPrefix(trimmed, "https://") {
+		return strings.TrimRight(trimmed, "/") + "/metrics"
+	}
+
+	return fmt.Sprintf("http://%s/metrics", strings.TrimRight(trimmed, "/"))
+}
+
+// MetricsHandler proxies Prometheus metrics from the internal exporter so callers
+// can scrape /metrics on the main HTTP server.
+func MetricsHandler(w http.ResponseWriter, r *http.Request) {
+	exporter := observability.PrometheusExporter
+	if exporter == nil {
+		WriteServiceUnavailable(w, "Metrics exporter not initialized")
+		return
+	}
+
+	metricsURL := buildMetricsURL(exporter.GetAddr())
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, metricsURL, nil)
+	if err != nil {
+		WriteServiceUnavailable(w, "Unable to construct metrics request")
+		return
+	}
+
+	// Preserve caller hint for content negotiation
+	if accept := r.Header.Get("Accept"); accept != "" {
+		req.Header.Set("Accept", accept)
+	}
+
+	resp, err := metricsProxyClient.Do(req)
+	if err != nil {
+		if observability.ServerLogger != nil {
+			observability.ServerLogger.Warn("Failed to proxy metrics request",
+				zap.String("url", metricsURL),
+				zap.Error(err))
+		}
+		WriteServiceUnavailable(w, "Prometheus exporter unavailable")
+		return
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			observability.ServerLogger.Warn("Failed to close metrics response body",
+				zap.Error(err))
+		}
+	}()
+
+	for key, values := range resp.Header {
+		// Skip hop-by-hop headers; net/http handles them.
+		if strings.EqualFold(key, "Connection") || strings.EqualFold(key, "Keep-Alive") ||
+			strings.EqualFold(key, "Proxy-Authenticate") || strings.EqualFold(key, "Proxy-Authorization") ||
+			strings.EqualFold(key, "TE") || strings.EqualFold(key, "Trailer") ||
+			strings.EqualFold(key, "Transfer-Encoding") || strings.EqualFold(key, "Upgrade") {
+			continue
+		}
+
+		for _, v := range values {
+			w.Header().Add(key, v)
+		}
+	}
+
+	// Ensure we always advertise Prometheus content type
+	if resp.Header.Get("Content-Type") == "" {
+		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
+	}
+
+	w.WriteHeader(resp.StatusCode)
+	if _, err := io.Copy(w, resp.Body); err != nil && observability.ServerLogger != nil {
+		observability.ServerLogger.Warn("Failed to write metrics response",
+			zap.Error(err))
+	}
 }

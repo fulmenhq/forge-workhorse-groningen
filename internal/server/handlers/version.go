@@ -31,28 +31,31 @@ func SetAppIdentity(identity *appidentity.Identity) {
 
 // VersionResponse represents the version information response
 type VersionResponse struct {
-	App     AppInfo     `json:"app"`
-	SSOT    SSOTInfo    `json:"ssot"`
-	Runtime RuntimeInfo `json:"runtime"`
+	App          AppInfo     `json:"app"`
+	Dependencies DepInfo     `json:"dependencies"`
+	Runtime      RuntimeInfo `json:"runtime"`
 }
 
 // AppInfo contains application version details
 type AppInfo struct {
 	Name      string `json:"name"`
 	Version   string `json:"version"`
-	Commit    string `json:"commit"`
-	BuildDate string `json:"buildDate"`
+	Commit    string `json:"git_commit"`
+	BuildDate string `json:"build_date"`
+	GoVersion string `json:"go_version,omitempty"`
 }
 
-// SSOTInfo contains SSOT version information
-type SSOTInfo struct {
+// DepInfo contains dependency version information
+type DepInfo struct {
 	Gofulmen string `json:"gofulmen"`
 	Crucible string `json:"crucible"`
 }
 
 // RuntimeInfo contains runtime environment information
 type RuntimeInfo struct {
-	Go string `json:"go"`
+	Platform      string `json:"platform"`
+	NumCPU        int    `json:"num_cpu"`
+	NumGoroutines int    `json:"num_goroutines"`
 }
 
 // VersionHandler handles version information requests
@@ -63,7 +66,7 @@ func VersionHandler(w http.ResponseWriter, r *http.Request) {
 	identity := appIdentity
 	if identity == nil {
 		identity = &appidentity.Identity{
-			BinaryName: "groningen",
+			BinaryName: "workhorse",
 		}
 	}
 
@@ -73,13 +76,16 @@ func VersionHandler(w http.ResponseWriter, r *http.Request) {
 			Version:   AppVersion,
 			Commit:    AppCommit,
 			BuildDate: AppBuildDate,
+			GoVersion: runtime.Version(),
 		},
-		SSOT: SSOTInfo{
+		Dependencies: DepInfo{
 			Gofulmen: version.Gofulmen,
 			Crucible: version.Crucible,
 		},
 		Runtime: RuntimeInfo{
-			Go: runtime.Version(),
+			Platform:      runtime.GOOS + "/" + runtime.GOARCH,
+			NumCPU:        runtime.NumCPU(),
+			NumGoroutines: runtime.NumGoroutine(),
 		},
 	}
 

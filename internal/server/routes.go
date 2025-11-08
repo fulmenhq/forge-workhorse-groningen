@@ -1,8 +1,10 @@
 package server
 
 import (
+	"context"
 	"os"
 
+	"github.com/fulmenhq/gofulmen/appidentity"
 	"github.com/fulmenhq/gofulmen/pkg/signals"
 	"go.uber.org/zap"
 
@@ -12,8 +14,11 @@ import (
 
 // registerRoutes registers all HTTP routes
 func (s *Server) registerRoutes() {
-	// Health endpoint
+	// Standard health endpoints per Workhorse §9
 	s.router.Get("/health", handlers.HealthHandler)
+	s.router.Get("/health/live", handlers.LivenessHandler)
+	s.router.Get("/health/ready", handlers.ReadinessHandler)
+	s.router.Get("/health/startup", handlers.StartupHandler)
 
 	// Version endpoint
 	s.router.Get("/version", handlers.VersionHandler)
@@ -28,9 +33,20 @@ func (s *Server) registerRoutes() {
 // registerAdminEndpoint optionally registers the admin signal endpoint
 func (s *Server) registerAdminEndpoint() {
 	// Get admin token from environment (identity-aware)
-	adminToken := os.Getenv("GRONINGEN_ADMIN_TOKEN")
+	ctx := context.Background()
+	identity, _ := appidentity.Get(ctx)
+	envPrefix := "WORKHORSE_"
+	if identity != nil && identity.EnvPrefix != "" {
+		envPrefix = identity.EnvPrefix
+	}
+
+	adminToken := os.Getenv(envPrefix + "ADMIN_TOKEN")
+	logger := observability.ServerLogger
+
 	if adminToken == "" {
-		observability.ServerLogger.Debug("Admin signal endpoint disabled (no GRONINGEN_ADMIN_TOKEN set)")
+		if logger != nil {
+			logger.Debug("Admin signal endpoint disabled (no " + envPrefix + "ADMIN_TOKEN set)")
+		}
 		return
 	}
 
@@ -45,9 +61,11 @@ func (s *Server) registerAdminEndpoint() {
 	// Register admin endpoint
 	s.router.Post("/admin/signal", handler.ServeHTTP)
 
-	observability.ServerLogger.Info("Admin signal endpoint enabled",
-		zap.String("path", "/admin/signal"),
-		zap.String("auth", "bearer token"),
-		zap.String("rate_limit", "10/min, burst 5"))
-	observability.ServerLogger.Warn("Admin endpoint enabled - ensure this server is not exposed to public internet")
+	if logger != nil {
+		logger.Info("Admin signal endpoint enabled",
+			zap.String("path", "/admin/signal"),
+			zap.String("auth", "bearer token"),
+			zap.String("rate_limit", "10/min, burst 5"))
+		logger.Warn("Admin endpoint enabled - ensure this server is not exposed to public internet")
+	}
 }

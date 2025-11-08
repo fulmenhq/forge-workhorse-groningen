@@ -34,11 +34,18 @@ Groningen is a production-ready workhorse application template from the FulmenHQ
 
 ### Standard Endpoints
 
-| Endpoint   | Method | Purpose                  | Response                             |
-| ---------- | ------ | ------------------------ | ------------------------------------ |
-| `/health`  | GET    | Application health check | JSON with status, timestamp, checks  |
-| `/version` | GET    | Version information      | JSON with app, SSOT, runtime details |
-| `/metrics` | GET    | Prometheus metrics       | OpenMetrics format for scraping      |
+| Endpoint          | Method | Purpose                                          | Response                             |
+| ----------------- | ------ | ------------------------------------------------ | ------------------------------------ |
+| `/health`         | GET    | Aggregate application health across dependencies | JSON with status, timestamp, checks  |
+| `/health/live`    | GET    | Fast liveness probe                              | JSON probe response (`200/503`)      |
+| `/health/ready`   | GET    | Readiness probe w/ dependency checks             | JSON probe response (`200/503`)      |
+| `/health/startup` | GET    | Startup probe to signal init completion          | JSON probe response (`200/503`)      |
+| `/version`        | GET    | Version and identity information                 | JSON with app, SSOT, runtime details |
+| `/metrics`        | GET    | Prometheus/OpenMetrics scrape endpoint           | OpenMetrics format for scraping      |
+
+All non-2xx responses share the standardized error envelope described in §9 of the Workhorse standard, ensuring consistent JSON errors for orchestrators and operators.
+
+The `/metrics` handler proxies directly to the gofulmen Prometheus exporter that runs on the configured metrics port, so platform teams only need to scrape the primary HTTP server to collect telemetry.
 
 ### CLI Commands
 

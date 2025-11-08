@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/server/handlers"
 	servermw "github.com/fulmenhq/forge-workhorse-groningen/internal/server/middleware"
 )
 
@@ -27,12 +28,18 @@ func New(host string, port int) *Server {
 	r := chi.NewRouter()
 
 	// Standard chi middleware
-	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
 
-	// Our custom middleware
+	// Our custom middleware (recovery, error handling, request ID, then metrics)
+	r.Use(servermw.Recovery)
+	r.Use(servermw.ErrorHandler)
+	r.Use(servermw.RequestID)
 	r.Use(servermw.RequestMetrics)
+
+	// Standardized error responses
+	r.NotFound(handlers.NotFoundHandler)
+	r.MethodNotAllowed(handlers.MethodNotAllowedHandler)
 
 	s := &Server{
 		router: r,
@@ -70,4 +77,9 @@ func (s *Server) Start() error {
 func (s *Server) Shutdown(ctx context.Context) error {
 	observability.ServerLogger.Info("Shutting down HTTP server")
 	return s.server.Shutdown(ctx)
+}
+
+// Handler exposes the underlying router for testing and instrumentation
+func (s *Server) Handler() http.Handler {
+	return s.router
 }

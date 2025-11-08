@@ -10,7 +10,7 @@ This directory collects focused guides that expand on the main developer handboo
 
 ## Available Guides
 
-- [Groningen Template Overview](groningen-overview.md) — comprehensive overview of template architecture, components, and integration patterns
+- [Groningen Template Overview](../groningen-overview.md) — comprehensive overview of template architecture, components, and integration patterns
 - [Accessing Crucible Documentation via gofulmen](accessing-crucible-docs-via-gofulmen.md) — learn how to read embedded Crucible docs, schemas, and config shipped with gofulmen.
 - [CDRL Guide](fulmen_cdrl_guide.md) — step-by-step template customization for downstream applications
 

@@ -42,11 +42,11 @@ func GetAppIdentity() *appidentity.Identity {
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "groningen",
+	Use:   "workhorse",
 	Short: "A Fulmen workhorse application for robust, scalable backends",
-	Long: `groningen is a production-ready workhorse application template from the
-FulmenHQ ecosystem. Named after the Groningen horse breed known for strength
-and toughness in heavy work.
+	Long: `workhorse is a production-ready workhorse application template from the
+FulmenHQ ecosystem. This template provides enterprise-grade patterns for
+building robust, scalable Go backends.
 
 This template provides:
 - HTTP server with standard endpoints (/health, /version, /metrics)
@@ -57,9 +57,6 @@ This template provides:
 - CLI commands for server management and diagnostics
 
 Use the subcommands to perform specific operations.`,
-
-	SilenceUsage:  true, // Don't show usage on errors
-	SilenceErrors: true, // We'll handle error output ourselves
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -72,7 +69,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	// Global flags
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $XDG_CONFIG_HOME/fulmen/groningen/config.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $XDG_CONFIG_HOME/fulmen/workhorse/config.yaml)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output (sets log level to debug)")
 
 	// Bind flags to viper
@@ -88,6 +85,11 @@ func initConfig() {
 		ExitWithCodeStderr(foundry.ExitFileNotFound, "Failed to load app identity from .fulmen/app.yaml", err)
 	}
 	appIdentity = identity
+
+	// Update root command Use field with actual binary name
+	if identity != nil && identity.BinaryName != "" {
+		rootCmd.Use = identity.BinaryName
+	}
 
 	// Initialize CLI logger early so we can use it in config loading
 	observability.InitCLILogger(appIdentity.BinaryName, verbose)
@@ -116,7 +118,7 @@ func initConfig() {
 			viper.SetConfigName("config")
 
 			// Also check old location for backward compatibility
-			oldConfigDir := configDir + "/groningen"
+			oldConfigDir := configDir + "/workhorse"
 			viper.AddConfigPath(oldConfigDir)
 		}
 

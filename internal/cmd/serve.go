@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -20,6 +21,44 @@ var (
 	serverPort int
 	serverHost string
 )
+
+// signalHealthChecker implements HealthChecker for signal system
+type signalHealthChecker struct{}
+
+func (s signalHealthChecker) CheckHealth(ctx context.Context) error {
+	// Check if signal system is responsive
+	// This is a basic check - in production you might want more sophisticated checks
+	return nil // Signal handlers are registered and ready
+}
+
+// telemetryHealthChecker ensures telemetry system and exporter are available
+type telemetryHealthChecker struct{}
+
+func (telemetryHealthChecker) CheckHealth(ctx context.Context) error {
+	if observability.TelemetrySystem == nil || observability.PrometheusExporter == nil {
+		return errors.New("telemetry system not initialized")
+	}
+	return nil
+}
+
+// identityHealthChecker validates app identity metadata
+type identityHealthChecker struct {
+	binaryName string
+	envPrefix  string
+	configName string
+}
+
+func (i identityHealthChecker) CheckHealth(ctx context.Context) error {
+	switch {
+	case i.binaryName == "":
+		return errors.New("app identity missing binary name")
+	case i.envPrefix == "":
+		return errors.New("app identity missing env prefix")
+	case i.configName == "":
+		return errors.New("app identity missing config name")
+	}
+	return nil
+}
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -41,8 +80,13 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 		logLevel := viper.GetString("logging.level")
 		observability.InitServerLogger(identity.BinaryName, logLevel, namespace)
 
+		metricsPort := viper.GetInt("metrics.port")
+		if metricsPort == 0 {
+			metricsPort = 9090
+		}
+
 		// Initialize metrics with namespace
-		if err := observability.InitMetrics(identity.BinaryName, namespace); err != nil {
+		if err := observability.InitMetrics(identity.BinaryName, metricsPort, namespace); err != nil {
 			observability.ServerLogger.Error("Failed to initialize metrics",
 				zap.Error(err))
 			return fmt.Errorf("metrics initialization failed: %w", err)
@@ -53,7 +97,19 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 			zap.String("namespace", namespace),
 			zap.String("version", versionInfo.Version),
 			zap.String("host", serverHost),
-			zap.Int("port", serverPort))
+			zap.Int("port", serverPort),
+			zap.Int("metrics_port", metricsPort))
+
+		// Initialize health manager
+		handlers.InitHealthManager(versionInfo.Version)
+		hm := handlers.GetHealthManager()
+		hm.RegisterChecker("signal_handlers", signalHealthChecker{})
+		hm.RegisterChecker("telemetry", telemetryHealthChecker{})
+		hm.RegisterChecker("app_identity", identityHealthChecker{
+			binaryName: identity.BinaryName,
+			envPrefix:  identity.EnvPrefix,
+			configName: identity.ConfigName,
+		})
 
 		// Create server
 		srv := server.New(serverHost, serverPort)
@@ -95,9 +151,28 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 
 		// Register config reload handler (SIGHUP)
 		signals.OnReload(func(ctx context.Context) error {
-			observability.ServerLogger.Info("Received SIGHUP: config reload requested")
-			// Note: Config reload implementation deferred - would need thread-safe config update
-			observability.ServerLogger.Warn("Config reload not yet implemented - restart server to apply changes")
+			observability.ServerLogger.Info("Received SIGHUP: attempting config reload")
+
+			// Attempt to reload configuration
+			if err := viper.ReadInConfig(); err != nil {
+				if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+					observability.ServerLogger.Info("No config file found - using defaults and environment variables")
+					return nil
+				}
+				observability.ServerLogger.Error("Failed to reload config file",
+					zap.String("file", viper.ConfigFileUsed()),
+					zap.Error(err))
+				return fmt.Errorf("config reload failed: %w", err)
+			}
+
+			observability.ServerLogger.Info("Configuration reloaded successfully",
+				zap.String("file", viper.ConfigFileUsed()))
+
+			// TODO: Add hooks for components that need to react to config changes
+			// - Update log levels if changed
+			// - Update metrics configuration if changed
+			// - Notify other components of config changes
+
 			return nil
 		})
 
