@@ -17,7 +17,9 @@ func TestRequestMetrics_BasicFunctionality(t *testing.T) {
 	// Setup real telemetry system for testing
 	exporter := exporters.NewPrometheusExporter("test", ":0") // :0 for random port
 	require.NoError(t, exporter.Start())
-	defer exporter.Stop()
+	defer func() {
+		_ = exporter.Stop()
+	}()
 
 	config := &telemetry.Config{
 		Enabled: true,
@@ -37,7 +39,7 @@ func TestRequestMetrics_BasicFunctionality(t *testing.T) {
 	// Create test handler
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("test response"))
+		_, _ = w.Write([]byte("test response"))
 	})
 
 	// Wrap with metrics middleware
@@ -85,7 +87,9 @@ func TestRequestMetrics_WithErrorStatus(t *testing.T) {
 	// Setup real telemetry system
 	exporter := exporters.NewPrometheusExporter("test", ":0")
 	require.NoError(t, exporter.Start())
-	defer exporter.Stop()
+	defer func() {
+		_ = exporter.Stop()
+	}()
 
 	config := &telemetry.Config{
 		Enabled: true,
@@ -121,7 +125,9 @@ func TestRequestMetrics_WithRequestSize(t *testing.T) {
 	// Setup real telemetry system
 	exporter := exporters.NewPrometheusExporter("test", ":0")
 	require.NoError(t, exporter.Start())
-	defer exporter.Stop()
+	defer func() {
+		_ = exporter.Stop()
+	}()
 
 	config := &telemetry.Config{
 		Enabled: true,
@@ -159,7 +165,9 @@ func TestRequestMetrics_WithResponseSize(t *testing.T) {
 	// Setup real telemetry system
 	exporter := exporters.NewPrometheusExporter("test", ":0")
 	require.NoError(t, exporter.Start())
-	defer exporter.Stop()
+	defer func() {
+		_ = exporter.Stop()
+	}()
 
 	config := &telemetry.Config{
 		Enabled: true,
@@ -178,7 +186,7 @@ func TestRequestMetrics_WithResponseSize(t *testing.T) {
 	responseBody := "test response with some content"
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(responseBody))
+		_, _ = w.Write([]byte(responseBody))
 	})
 
 	middleware := RequestMetrics(handler)
@@ -221,7 +229,9 @@ func TestRequestMetrics_WithRequestID(t *testing.T) {
 	// Setup real telemetry system
 	exporter := exporters.NewPrometheusExporter("test", ":0")
 	require.NoError(t, exporter.Start())
-	defer exporter.Stop()
+	defer func() {
+		_ = exporter.Stop()
+	}()
 
 	config := &telemetry.Config{
 		Enabled: true,
@@ -262,7 +272,9 @@ func TestRequestMetrics_DurationMeasurement(t *testing.T) {
 	// Setup real telemetry system
 	exporter := exporters.NewPrometheusExporter("test", ":0")
 	require.NoError(t, exporter.Start())
-	defer exporter.Stop()
+	defer func() {
+		_ = exporter.Stop()
+	}()
 
 	config := &telemetry.Config{
 		Enabled: true,

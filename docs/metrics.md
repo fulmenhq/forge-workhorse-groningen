@@ -20,14 +20,17 @@ GRONINGEN_METRICS_PATH=/metrics
 ## HTTP Metrics
 
 ### `http_requests_total`
+
 **Type:** Counter  
 **Description:** Total number of HTTP requests processed  
 **Labels:**
+
 - `method` - HTTP method (GET, POST, PUT, DELETE, etc.)
-- `endpoint` - Route pattern (e.g., "/health/*", "/version", "/unknown")
+- `endpoint` - Route pattern (e.g., "/health/\*", "/version", "/unknown")
 - `status` - HTTP status code (200, 404, 500, etc.)
 
 **Example Queries:**
+
 ```promql
 # Total requests per second
 rate(http_requests_total[5m])
@@ -43,14 +46,17 @@ sum(rate(http_requests_total[5m])) by (status)
 ```
 
 ### `http_request_duration_ms`
+
 **Type:** Histogram  
 **Description:** HTTP request duration in milliseconds  
 **Labels:**
+
 - `method` - HTTP method
-- `endpoint` - Route pattern  
+- `endpoint` - Route pattern
 - `status` - HTTP status code
 
 **Example Queries:**
+
 ```promql
 # 95th percentile request duration
 histogram_quantile(0.95, rate(http_request_duration_ms_bucket[5m]))
@@ -63,13 +69,16 @@ histogram_quantile(0.50, rate(http_request_duration_ms_bucket[5m]))
 ```
 
 ### `http_request_size_bytes`
+
 **Type:** Gauge  
 **Description:** HTTP request body size in bytes  
 **Labels:**
+
 - `method` - HTTP method
 - `endpoint` - Route pattern
 
 **Example Queries:**
+
 ```promql
 # Average request size by method
 avg(http_request_size_bytes) by (method)
@@ -79,13 +88,16 @@ histogram_quantile(0.95, http_request_size_bytes)
 ```
 
 ### `http_response_size_bytes`
+
 **Type:** Gauge  
 **Description:** HTTP response body size in bytes  
 **Labels:**
+
 - `method` - HTTP method
 - `endpoint` - Route pattern
 
 **Example Queries:**
+
 ```promql
 # Average response size by endpoint
 avg(http_response_size_bytes) by (endpoint)
@@ -95,15 +107,18 @@ sum(rate(http_response_size_bytes[5m])) by (endpoint)
 ```
 
 ### `http_errors_total`
+
 **Type:** Counter  
 **Description:** Total HTTP errors (4xx and 5xx responses)  
 **Labels:**
+
 - `method` - HTTP method
 - `endpoint` - Route pattern
 - `status` - HTTP status code
 - `error_type` - Error classification ("client_error" or "server_error")
 
 **Example Queries:**
+
 ```promql
 # Error rate by type
 sum(rate(http_errors_total[5m])) by (error_type)
@@ -118,13 +133,16 @@ sum(rate(http_errors_total{error_type="server_error"}[5m]))
 ## Application Metrics
 
 ### `app_operations_total`
+
 **Type:** Counter  
 **Description:** Total application operations performed  
 **Labels:**
+
 - `operation` - Operation name (e.g., "health_check", "config_reload")
 - `status` - Operation status ("success" or "failure")
 
 **Example Queries:**
+
 ```promql
 # Operations per second by type
 sum(rate(app_operations_total[5m])) by (operation)
@@ -137,13 +155,16 @@ sum(rate(app_operations_total{status="failure"}[5m])) by (operation)
 ```
 
 ### `app_operations_errors_total`
+
 **Type:** Counter  
 **Description:** Total application operation errors  
 **Labels:**
+
 - `operation` - Operation name
 - `error_type` - Specific error type
 
 **Example Queries:**
+
 ```promql
 # Error rate by type
 sum(rate(app_operations_errors_total[5m])) by (error_type)
@@ -153,11 +174,13 @@ topk(10, sum(rate(app_operations_errors_total[5m])) by (error_type))
 ```
 
 ### `app_active_connections`
+
 **Type:** Gauge  
 **Description:** Current number of active connections  
 **Labels:** None
 
 **Example Queries:**
+
 ```promql
 # Current active connections
 app_active_connections
@@ -167,13 +190,16 @@ rate(app_active_connections[5m])
 ```
 
 ### `app_health_check_total`
+
 **Type:** Counter  
 **Description:** Total health check executions  
 **Labels:**
+
 - `check` - Health check name (e.g., "telemetry", "identity")
 - `status` - Check result ("healthy" or "unhealthy")
 
 **Example Queries:**
+
 ```promql
 # Health check success rate
 sum(rate(app_health_check_total{status="healthy"}[5m])) / sum(rate(app_health_check_total[5m]))
@@ -183,12 +209,15 @@ sum(rate(app_health_check_total{status="unhealthy"}[5m])) by (check)
 ```
 
 ### `app_health_check_duration_ms`
+
 **Type:** Histogram  
 **Description:** Health check execution duration in milliseconds  
 **Labels:**
+
 - `check` - Health check name
 
 **Example Queries:**
+
 ```promql
 # 95th percentile health check duration
 histogram_quantile(0.95, rate(app_health_check_duration_ms_bucket[5m]))
@@ -198,11 +227,13 @@ topk(5, histogram_quantile(0.95, rate(app_health_check_duration_ms_bucket[5m])) 
 ```
 
 ### `app_server_start_time_seconds`
+
 **Type:** Gauge  
 **Description:** Server start time as Unix timestamp  
 **Labels:** None
 
 **Example Queries:**
+
 ```promql
 # Server uptime (current time - start time)
 time() - app_server_start_time_seconds
@@ -212,11 +243,13 @@ changes(app_server_start_time_seconds[1h])
 ```
 
 ### `app_server_uptime_seconds`
+
 **Type:** Gauge  
 **Description:** Server uptime in seconds  
 **Labels:** None
 
 **Example Queries:**
+
 ```promql
 # Current uptime
 app_server_uptime_seconds
@@ -230,26 +263,32 @@ rate(app_server_uptime_seconds[5m])
 Groningen automatically exposes Go runtime metrics provided by the Prometheus client library:
 
 ### `go_goroutines`
+
 **Type:** Gauge  
 **Description:** Current number of goroutines
 
 ### `go_threads`
+
 **Type:** Gauge  
 **Description:** Current number of OS threads
 
 ### `go_memstats_alloc_bytes`
+
 **Type:** Gauge  
 **Description:** Current heap allocation in bytes
 
 ### `go_memstats_heap_alloc_bytes`
+
 **Type:** Gauge  
 **Description:** Current heap allocation in bytes
 
 ### `go_memstats_heap_sys_bytes`
+
 **Type:** Gauge  
 **Description:** Heap system memory in bytes
 
 **Example Queries:**
+
 ```promql
 # Goroutine count trends
 rate(go_goroutines[5m])

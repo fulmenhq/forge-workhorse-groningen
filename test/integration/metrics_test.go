@@ -33,7 +33,7 @@ func TestMetricsEndpoint_Integration(t *testing.T) {
 	// Add a simple test route
 	s.Handler().(*chi.Mux).Get("/test", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("test response"))
+		_, _ = w.Write([]byte("test response"))
 	})
 
 	// Start server in background
@@ -53,32 +53,36 @@ func TestMetricsEndpoint_Integration(t *testing.T) {
 
 	// Get server URL
 	serverURL := fmt.Sprintf("http://localhost:%d", s.Port())
-	defer s.Shutdown(context.Background())
+	defer func() {
+		_ = s.Shutdown(context.Background())
+	}()
 
 	// Make some requests to generate metrics
 	for i := 0; i < 5; i++ {
 		resp, err := http.Get(serverURL + "/test")
 		require.NoError(t, err)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	}
 
 	// Test health endpoint to generate more metrics
 	resp, err := http.Get(serverURL + "/health")
 	require.NoError(t, err)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Test version endpoint
 	resp, err = http.Get(serverURL + "/version")
 	require.NoError(t, err)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Test metrics endpoint
 	resp, err = http.Get(serverURL + "/metrics")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Verify metrics content
@@ -108,16 +112,16 @@ func TestMetricsEndpoint_LoadTesting(t *testing.T) {
 	router := s.Handler().(*chi.Mux)
 	router.Get("/fast", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("fast response"))
+		_, _ = w.Write([]byte("fast response"))
 	})
 	router.Get("/slow", func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(50 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("slow response"))
+		_, _ = w.Write([]byte("slow response"))
 	})
 	router.Get("/error", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("error response"))
+		_, _ = w.Write([]byte("error response"))
 	})
 
 	// Start server
@@ -134,7 +138,9 @@ func TestMetricsEndpoint_LoadTesting(t *testing.T) {
 	}
 
 	serverURL := fmt.Sprintf("http://localhost:%d", s.Port())
-	defer s.Shutdown(context.Background())
+	defer func() {
+		_ = s.Shutdown(context.Background())
+	}()
 
 	// Generate load with concurrent requests
 	const numRequests = 50
@@ -163,7 +169,7 @@ func TestMetricsEndpoint_LoadTesting(t *testing.T) {
 
 			resp, err := http.Get(serverURL + path)
 			if err == nil {
-				resp.Body.Close()
+				_ = resp.Body.Close()
 			}
 		}
 	}
@@ -181,7 +187,9 @@ func TestMetricsEndpoint_LoadTesting(t *testing.T) {
 	// Verify metrics endpoint still works
 	resp, err := http.Get(serverURL + "/metrics")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	body, err := io.ReadAll(resp.Body)
@@ -216,7 +224,7 @@ func TestMetricsEndpoint_PrometheusFormat(t *testing.T) {
 	s.Handler().(*chi.Mux).Get("/format-test", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"message": "format test"}`))
+		_, _ = w.Write([]byte(`{"message": "format test"}`))
 	})
 
 	// Start server
@@ -233,18 +241,22 @@ func TestMetricsEndpoint_PrometheusFormat(t *testing.T) {
 	}
 
 	serverURL := fmt.Sprintf("http://localhost:%d", s.Port())
-	defer s.Shutdown(context.Background())
+	defer func() {
+		_ = s.Shutdown(context.Background())
+	}()
 
 	// Make a request
 	resp, err := http.Get(serverURL + "/format-test")
 	require.NoError(t, err)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Get metrics
 	resp, err = http.Get(serverURL + "/metrics")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Check content type
@@ -293,12 +305,12 @@ func TestMetricsEndpoint_WithTelemetryDisabled(t *testing.T) {
 
 	// Temporarily disable metrics
 	originalEnabled := os.Getenv("GRONINGEN_METRICS_ENABLED")
-	os.Setenv("GRONINGEN_METRICS_ENABLED", "false")
+	_ = os.Setenv("GRONINGEN_METRICS_ENABLED", "false")
 	defer func() {
 		if originalEnabled != "" {
-			os.Setenv("GRONINGEN_METRICS_ENABLED", originalEnabled)
+			_ = os.Setenv("GRONINGEN_METRICS_ENABLED", originalEnabled)
 		} else {
-			os.Unsetenv("GRONINGEN_METRICS_ENABLED")
+			_ = os.Unsetenv("GRONINGEN_METRICS_ENABLED")
 		}
 	}()
 
@@ -308,7 +320,7 @@ func TestMetricsEndpoint_WithTelemetryDisabled(t *testing.T) {
 	// Add test route
 	s.Handler().(*chi.Mux).Get("/test", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("test"))
+		_, _ = w.Write([]byte("test"))
 	})
 
 	// Start server
@@ -325,18 +337,22 @@ func TestMetricsEndpoint_WithTelemetryDisabled(t *testing.T) {
 	}
 
 	serverURL := fmt.Sprintf("http://localhost:%d", s.Port())
-	defer s.Shutdown(context.Background())
+	defer func() {
+		_ = s.Shutdown(context.Background())
+	}()
 
 	// Make a request
 	resp, err := http.Get(serverURL + "/test")
 	require.NoError(t, err)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	// Metrics endpoint should return service unavailable when disabled
 	resp, err = http.Get(serverURL + "/metrics")
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 }
 
