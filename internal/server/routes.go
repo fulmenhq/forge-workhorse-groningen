@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/fulmenhq/gofulmen/appidentity"
-	"github.com/fulmenhq/gofulmen/pkg/signals"
+	"github.com/fulmenhq/gofulmen/signals"
 	"go.uber.org/zap"
 
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"

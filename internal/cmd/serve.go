@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/fulmenhq/gofulmen/pkg/signals"
+	"github.com/fulmenhq/gofulmen/signals"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
