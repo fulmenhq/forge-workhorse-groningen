@@ -5,6 +5,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
+	errwrap "github.com/fulmenhq/forge-workhorse-groningen/internal/errors"
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
 )
 
@@ -18,7 +19,7 @@ var healthCmd = &cobra.Command{
 		// Check 1: Version info available
 		if versionInfo.Version == "" {
 			observability.CLILogger.Error("❌ FAIL: Version information missing")
-			ExitWithCode(observability.CLILogger, foundry.ExitConfigInvalid, "Version information missing", nil)
+			ExitWithCode(observability.CLILogger, foundry.ExitConfigInvalid, "Version information missing", errwrap.NewConfigInvalidError("Version information missing"))
 			return
 		}
 		observability.CLILogger.Debug("Version check passed", zap.String("version", versionInfo.Version))
@@ -27,7 +28,7 @@ var healthCmd = &cobra.Command{
 		// Check 2: Logger initialized
 		if observability.CLILogger == nil {
 			// Can't log if logger is nil, so use stderr
-			ExitWithCodeStderr(foundry.ExitConfigInvalid, "Logger not initialized", nil)
+			ExitWithCodeStderr(foundry.ExitConfigInvalid, "Logger not initialized", errwrap.NewConfigInvalidError("Logger not initialized"))
 			return
 		}
 		observability.CLILogger.Info("✅ Logger initialized")

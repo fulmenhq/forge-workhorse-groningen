@@ -48,3 +48,4 @@ temp/
 # Logs
 *.log
 logs/
+.gocache/

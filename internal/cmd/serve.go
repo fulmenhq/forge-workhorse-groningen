@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -12,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 
+	errwrap "github.com/fulmenhq/forge-workhorse-groningen/internal/errors"
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/server"
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/server/handlers"
@@ -36,7 +35,7 @@ type telemetryHealthChecker struct{}
 
 func (telemetryHealthChecker) CheckHealth(ctx context.Context) error {
 	if observability.TelemetrySystem == nil || observability.PrometheusExporter == nil {
-		return errors.New("telemetry system not initialized")
+		return errwrap.NewInternalError("telemetry system not initialized")
 	}
 	return nil
 }
@@ -51,11 +50,11 @@ type identityHealthChecker struct {
 func (i identityHealthChecker) CheckHealth(ctx context.Context) error {
 	switch {
 	case i.binaryName == "":
-		return errors.New("app identity missing binary name")
+		return errwrap.NewConfigInvalidError("app identity missing binary name")
 	case i.envPrefix == "":
-		return errors.New("app identity missing env prefix")
+		return errwrap.NewConfigInvalidError("app identity missing env prefix")
 	case i.configName == "":
-		return errors.New("app identity missing config name")
+		return errwrap.NewConfigInvalidError("app identity missing config name")
 	}
 	return nil
 }
@@ -89,7 +88,7 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 		if err := observability.InitMetrics(identity.BinaryName, metricsPort, namespace); err != nil {
 			observability.ServerLogger.Error("Failed to initialize metrics",
 				zap.Error(err))
-			return fmt.Errorf("metrics initialization failed: %w", err)
+			return errwrap.WrapInternal(context.Background(), err, "metrics initialization failed")
 		}
 
 		observability.ServerLogger.Info("Initializing server",
@@ -142,7 +141,7 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 			defer cancel()
 
 			if err := srv.Shutdown(shutdownCtx); err != nil {
-				return fmt.Errorf("server shutdown failed: %w", err)
+				return errwrap.WrapInternal(context.Background(), err, "server shutdown failed")
 			}
 
 			observability.ServerLogger.Info("HTTP server stopped gracefully")
@@ -162,7 +161,7 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 				observability.ServerLogger.Error("Failed to reload config file",
 					zap.String("file", viper.ConfigFileUsed()),
 					zap.Error(err))
-				return fmt.Errorf("config reload failed: %w", err)
+				return errwrap.WrapConfigInvalid(context.Background(), err, "config reload failed")
 			}
 
 			observability.ServerLogger.Info("Configuration reloaded successfully",
@@ -206,7 +205,7 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 
 		// Wait for error or shutdown completion
 		if err := <-errChan; err != nil {
-			return fmt.Errorf("server error: %w", err)
+			return errwrap.WrapInternal(context.Background(), err, "server error")
 		}
 
 		return nil

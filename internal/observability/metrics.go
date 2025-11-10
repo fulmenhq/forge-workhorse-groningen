@@ -13,6 +13,9 @@ var (
 
 	// PrometheusExporter is the prometheus metrics exporter
 	PrometheusExporter *exporters.PrometheusExporter
+
+	// metricsPort stores the port the Prometheus exporter is listening on
+	metricsPort int
 )
 
 // InitMetrics initializes the telemetry system with Prometheus exporter.
@@ -22,6 +25,9 @@ func InitMetrics(serviceName string, port int, namespace ...string) error {
 	if port <= 0 {
 		port = 9090
 	}
+
+	// Store the metrics port for later retrieval
+	metricsPort = port
 
 	// Use namespace if provided, otherwise use service name
 	metricNamespace := serviceName
@@ -51,5 +57,15 @@ func InitMetrics(serviceName string, port int, namespace ...string) error {
 	}
 
 	TelemetrySystem = sys
+
+	// Note: Error metrics (errors_total, panics_total, errors_by_endpoint)
+	// are auto-registered by gofulmen telemetry on first use.
+	// See internal/metrics/errors.go for metric emission.
+
 	return nil
+}
+
+// GetMetricsPort returns the port the Prometheus exporter is listening on
+func GetMetricsPort() int {
+	return metricsPort
 }

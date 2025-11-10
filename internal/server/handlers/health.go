@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+
+	"github.com/fulmenhq/gofulmen/errors"
 )
 
 // HealthResponse represents the aggregate health check response
@@ -268,15 +270,31 @@ func HealthHandler(w http.ResponseWriter, r *http.Request) {
 	if globalHealthManager != nil {
 		globalHealthManager.HealthHandler(w, r)
 	} else {
-		// Fallback if not initialized
-		response := HealthResponse{
-			Status:    "healthy",
-			Version:   AppVersion,
-			Timestamp: time.Now().UTC().Format(time.RFC3339),
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(response)
+		// Fallback if not initialized - use structured error
+		err := errors.NewErrorEnvelope("SERVICE_UNAVAILABLE", "Health manager not initialized")
+		writeHealthError(w, r, err, http.StatusServiceUnavailable)
 	}
+}
+
+// writeHealthError writes structured error for health endpoints
+func writeHealthError(w http.ResponseWriter, r *http.Request, err *errors.ErrorEnvelope, statusCode int) {
+	response := struct {
+		Error struct {
+			Code      string `json:"code"`
+			Message   string `json:"message"`
+			RequestID string `json:"request_id,omitempty"`
+		} `json:"error"`
+		Status    string `json:"status"`
+		Timestamp string `json:"timestamp"`
+	}{}
+
+	response.Error.Code = err.Code
+	response.Error.Message = err.Message
+	response.Error.RequestID = err.CorrelationID
+	response.Status = "unhealthy"
+	response.Timestamp = time.Now().UTC().Format(time.RFC3339)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(response)
 }

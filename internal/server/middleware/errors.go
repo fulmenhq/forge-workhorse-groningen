@@ -1,19 +1,34 @@
 package middleware
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"runtime/debug"
 
-	"github.com/fulmenhq/forge-workhorse-groningen/internal/server/handlers"
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/metrics"
+	"github.com/fulmenhq/gofulmen/errors"
 )
 
-// Recovery middleware recovers from panics and returns standardized error responses
+// Recovery middleware recovers from panics and logs them
 func Recovery(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
-				// Log the panic (would use proper logger in production)
-				// For now, just return a standardized internal server error
-				handlers.WriteInternalError(w, "Internal server error occurred")
+				// Create structured error from panic
+				panicErr := errors.NewErrorEnvelope("INTERNAL_ERROR", fmt.Sprintf("panic: %v", err)).
+					WithCorrelationID(GetRequestID(r.Context()))
+				panicErr, _ = panicErr.WithContext(map[string]interface{}{
+					"stack_trace": string(debug.Stack()),
+				})
+				// Set severity to critical
+				panicErr, _ = panicErr.WithSeverity(errors.SeverityCritical)
+
+				// Record metric
+				metrics.RecordPanic()
+
+				// Write error response using structured format
+				writeErrorResponse(w, panicErr, http.StatusInternalServerError)
 			}
 		}()
 
@@ -21,52 +36,35 @@ func Recovery(next http.Handler) http.Handler {
 	})
 }
 
-// ErrorHandler wraps a handler to provide standardized error responses
+// ErrorHandler is an alias for Recovery for backward compatibility
 func ErrorHandler(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Create a custom response writer to capture the status code
-		wrapped := &errorResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-
-		next.ServeHTTP(wrapped, r)
-
-		// If status code indicates an error and no content was written, use standardized error response
-		if wrapped.statusCode >= 400 && wrapped.statusCode != http.StatusNotFound && !wrapped.written {
-			switch wrapped.statusCode {
-			case http.StatusMethodNotAllowed:
-				handlers.WriteMethodNotAllowed(w, "The requested method is not allowed for this resource")
-			case http.StatusRequestTimeout:
-				handlers.WriteTimeoutError(w, "Request timed out")
-			case http.StatusTooManyRequests:
-				handlers.WriteTooManyRequests(w, "Too many requests")
-			case http.StatusInternalServerError:
-				handlers.WriteInternalError(w, "Internal server error occurred")
-			case http.StatusServiceUnavailable:
-				handlers.WriteServiceUnavailable(w, "Service temporarily unavailable")
-			default:
-				handlers.WriteError(w, wrapped.statusCode, "UNKNOWN_ERROR", "An error occurred", nil)
-			}
-		}
-
-		// Handle 404 case specifically
-		if wrapped.statusCode == http.StatusNotFound && !wrapped.written {
-			handlers.WriteNotFoundError(w, "The requested resource was not found")
-		}
-	})
+	return Recovery(next)
 }
 
-// errorResponseWriter wraps http.ResponseWriter to capture status code and written state
-type errorResponseWriter struct {
-	http.ResponseWriter
-	statusCode int
-	written    bool
+// ErrorResponse structure per API standards
+type ErrorResponse struct {
+	Error ErrorDetail `json:"error"`
 }
 
-func (rw *errorResponseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
+type ErrorDetail struct {
+	Code      string                 `json:"code"`
+	Message   string                 `json:"message"`
+	Details   map[string]interface{} `json:"details,omitempty"`
+	RequestID string                 `json:"request_id,omitempty"`
 }
 
-func (rw *errorResponseWriter) Write(data []byte) (int, error) {
-	rw.written = true
-	return rw.ResponseWriter.Write(data)
+// writeErrorResponse writes error response directly (avoid circular import)
+func writeErrorResponse(w http.ResponseWriter, envelope *errors.ErrorEnvelope, statusCode int) {
+	response := ErrorResponse{
+		Error: ErrorDetail{
+			Code:      envelope.Code,
+			Message:   envelope.Message,
+			Details:   envelope.Context,
+			RequestID: envelope.CorrelationID,
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(response)
 }

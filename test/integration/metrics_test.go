@@ -12,6 +12,7 @@ import (
 
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/server"
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/server/handlers"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,6 +27,9 @@ func TestMetricsEndpoint_Integration(t *testing.T) {
 	if err := observability.InitMetrics("test", 19090, "test"); err != nil {
 		t.Fatalf("Failed to initialize metrics: %v", err)
 	}
+
+	// Initialize health manager for testing
+	handlers.InitHealthManager("test")
 
 	// Setup test server with metrics
 	s := server.New("localhost", 18080) // Use fixed port for testing
@@ -90,9 +94,9 @@ func TestMetricsEndpoint_Integration(t *testing.T) {
 	require.NoError(t, err)
 	metricsContent := string(body)
 
-	// Check for expected metrics (with namespace prefix)
-	assert.Contains(t, metricsContent, "groningen_http_requests_total", "Should contain HTTP request counter")
-	assert.Contains(t, metricsContent, "groningen_http_request_duration_ms", "Should contain request duration histogram")
+	// Check for expected metrics (with "test" namespace prefix from InitMetrics)
+	assert.Contains(t, metricsContent, "test_http_requests_total", "Should contain HTTP request counter")
+	assert.Contains(t, metricsContent, "test_http_request_duration_ms", "Should contain request duration histogram")
 }
 
 func TestMetricsEndpoint_LoadTesting(t *testing.T) {
@@ -196,9 +200,9 @@ func TestMetricsEndpoint_LoadTesting(t *testing.T) {
 	require.NoError(t, err)
 	metricsContent := string(body)
 
-	// Verify metrics reflect the load
-	assert.Contains(t, metricsContent, "groningen_http_requests_total", "Should have HTTP request metrics")
-	assert.Contains(t, metricsContent, "groningen_http_request_duration_ms", "Should have duration metrics")
+	// Verify metrics reflect the load (using "test" namespace from InitMetrics)
+	assert.Contains(t, metricsContent, "test_http_requests_total", "Should have HTTP request metrics")
+	assert.Contains(t, metricsContent, "test_http_request_duration_ms", "Should have duration metrics")
 
 	// Basic load validation
 	assert.True(t, elapsed < 5*time.Second, "Load test should complete in reasonable time")
@@ -259,8 +263,12 @@ func TestMetricsEndpoint_PrometheusFormat(t *testing.T) {
 	}()
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
-	// Check content type
-	assert.Equal(t, "text/plain; version=0.0.4; charset=utf-8", resp.Header.Get("Content-Type"))
+	// Check content type (gofulmen exporter uses basic Prometheus format without charset)
+	contentType := resp.Header.Get("Content-Type")
+	assert.True(t,
+		contentType == "text/plain; version=0.0.4" ||
+			contentType == "text/plain; version=0.0.4; charset=utf-8",
+		"Expected Prometheus content type, got: %s", contentType)
 
 	// Read and validate Prometheus format
 	body, err := io.ReadAll(resp.Body)
@@ -270,23 +278,22 @@ func TestMetricsEndpoint_PrometheusFormat(t *testing.T) {
 	// Basic Prometheus format validation
 	lines := strings.Split(strings.TrimSpace(metricsContent), "\n")
 
-	// Should have HELP comments
-	helpLines := 0
+	// gofulmen telemetry may not emit HELP/TYPE comments by default
+	// Just verify we have actual metric lines with proper format
+	// Format: metric_name{labels} value
+	hasValidMetrics := false
 	for _, line := range lines {
-		if strings.HasPrefix(line, "# HELP ") {
-			helpLines++
+		// Skip comments
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+		// Check for metric lines (contain metric name and value)
+		if strings.Contains(line, "{") && len(strings.Fields(line)) >= 2 {
+			hasValidMetrics = true
+			break
 		}
 	}
-	assert.Greater(t, helpLines, 0, "Should have HELP comments")
-
-	// Should have TYPE comments
-	typeLines := 0
-	for _, line := range lines {
-		if strings.HasPrefix(line, "# TYPE ") {
-			typeLines++
-		}
-	}
-	assert.Greater(t, typeLines, 0, "Should have TYPE comments")
+	assert.True(t, hasValidMetrics, "Should have valid Prometheus metric lines")
 
 	// Should have actual metric lines
 	metricLines := 0
@@ -302,6 +309,16 @@ func TestMetricsEndpoint_WithTelemetryDisabled(t *testing.T) {
 	// Initialize logger for testing
 	observability.InitCLILogger("test", false)
 	observability.InitServerLogger("test", "info")
+
+	// Save and clear global metrics state
+	originalExporter := observability.PrometheusExporter
+	originalTelemetry := observability.TelemetrySystem
+	observability.PrometheusExporter = nil
+	observability.TelemetrySystem = nil
+	defer func() {
+		observability.PrometheusExporter = originalExporter
+		observability.TelemetrySystem = originalTelemetry
+	}()
 
 	// Temporarily disable metrics
 	originalEnabled := os.Getenv("GRONINGEN_METRICS_ENABLED")

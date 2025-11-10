@@ -23,8 +23,8 @@ func (s *Server) registerRoutes() {
 	// Version endpoint
 	s.router.Get("/version", handlers.VersionHandler)
 
-	// Metrics endpoint
-	s.router.Get("/metrics", handlers.MetricsHandler)
+	// Metrics endpoint (in server package to access HandleError)
+	s.router.Get("/metrics", MetricsHandler)
 
 	// Admin signal endpoint (optional, requires GRONINGEN_ADMIN_TOKEN)
 	s.registerAdminEndpoint()

@@ -1,4 +1,4 @@
-package handlers
+package server
 
 import (
 	"encoding/json"
@@ -74,12 +74,17 @@ func TestMetricsHandlerReturnsServiceUnavailableWithoutExporter(t *testing.T) {
 		t.Fatalf("expected status 503, got %d", rec.Code)
 	}
 
-	var resp ErrorResponse
+	var resp struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if resp.Error.Code != ErrCodeServiceUnavailable {
-		t.Fatalf("expected error code %s, got %s", ErrCodeServiceUnavailable, resp.Error.Code)
+	if resp.Error.Code != "SERVICE_UNAVAILABLE" {
+		t.Fatalf("expected error code SERVICE_UNAVAILABLE, got %s", resp.Error.Code)
 	}
 }

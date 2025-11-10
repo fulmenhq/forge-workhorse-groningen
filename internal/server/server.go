@@ -10,8 +10,8 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 
+	apperrors "github.com/fulmenhq/forge-workhorse-groningen/internal/errors"
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
-	"github.com/fulmenhq/forge-workhorse-groningen/internal/server/handlers"
 	servermw "github.com/fulmenhq/forge-workhorse-groningen/internal/server/middleware"
 )
 
@@ -39,9 +39,17 @@ func New(host string, port int) *Server {
 	// Chi's Recoverer is redundant since we have our own Recovery middleware
 	// r.Use(middleware.Recoverer)
 
-	// Standardized error responses
-	r.NotFound(handlers.NotFoundHandler)
-	r.MethodNotAllowed(handlers.MethodNotAllowedHandler)
+	// Standardized error responses using centralized HandleError
+	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
+		// Use gofulmen error envelope for 404 - correlation ID extracted from request context
+		err := apperrors.NewNotFoundError("The requested resource was not found")
+		HandleError(w, req, err)
+	})
+	r.MethodNotAllowed(func(w http.ResponseWriter, req *http.Request) {
+		// Use gofulmen error envelope for 405 - correlation ID extracted from request context
+		err := apperrors.NewMethodNotAllowedError("The requested method is not allowed for this resource")
+		HandleError(w, req, err)
+	})
 
 	s := &Server{
 		router: r,
