@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -58,7 +57,7 @@ var doctorCmd = &cobra.Command{
 		configDir, err := os.UserConfigDir()
 		if err != nil {
 			observability.CLILogger.Error("[4/5] Checking config directory... ❌ Cannot find config directory", zap.Error(err))
-			ExitWithCode(observability.CLILogger, foundry.ExitFileNotFound, "Cannot find config directory", errwrap.WrapInternal(context.Background(), err, "Cannot find config directory"))
+			ExitWithCode(observability.CLILogger, foundry.ExitFileNotFound, "Cannot find config directory", errwrap.WrapInternal(cmd.Context(), err, "Cannot find config directory"))
 			allChecks = false
 		} else {
 			observability.CLILogger.Info("[4/5] Checking config directory... ✅ "+configDir, zap.String("config_dir", configDir))

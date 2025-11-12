@@ -8,57 +8,55 @@ import (
 
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
 	"github.com/fulmenhq/gofulmen/telemetry"
-	"github.com/fulmenhq/gofulmen/telemetry/exporters"
+	telemetrytesting "github.com/fulmenhq/gofulmen/telemetry/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRequestMetrics_BasicFunctionality(t *testing.T) {
-	// Setup real telemetry system for testing
-	exporter := exporters.NewPrometheusExporter("test", ":0") // :0 for random port
-	require.NoError(t, exporter.Start())
-	defer func() {
-		_ = exporter.Stop()
-	}()
+func setupTelemetry(t *testing.T) *telemetrytesting.FakeCollector {
+	t.Helper()
 
+	collector := telemetrytesting.NewFakeCollector()
 	config := &telemetry.Config{
 		Enabled: true,
-		Emitter: exporter,
+		Emitter: collector,
 	}
 
 	sys, err := telemetry.NewSystem(config)
 	require.NoError(t, err)
 
-	// Replace global telemetry system temporarily
 	originalTelemetry := observability.TelemetrySystem
 	observability.TelemetrySystem = sys
-	defer func() {
-		observability.TelemetrySystem = originalTelemetry
-	}()
 
-	// Create test handler
+	t.Cleanup(func() {
+		observability.TelemetrySystem = originalTelemetry
+	})
+
+	return collector
+}
+
+func TestRequestMetrics_BasicFunctionality(t *testing.T) {
+	collector := setupTelemetry(t)
+
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("test response"))
 	})
 
-	// Wrap with metrics middleware
 	middleware := RequestMetrics(handler)
 
-	// Create test request
 	req := httptest.NewRequest("GET", "/test", nil)
 	rec := httptest.NewRecorder()
 
-	// Execute request
 	middleware.ServeHTTP(rec, req)
 
-	// Verify response
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "test response", rec.Body.String())
 
-	// Verify metrics are available in exporter
-	metrics := exporter.GetMetrics()
-	assert.NotEmpty(t, metrics, "Metrics should be recorded")
+	assert.Greater(t, collector.CountMetricsByName("http_requests_total"), 0,
+		"expected http_requests_total metric to be emitted")
+	assert.Greater(t, collector.CountMetricsByName("http_request_duration_ms"), 0,
+		"expected http_request_duration_ms metric to be emitted")
 }
 
 func TestRequestMetrics_WithTelemetryDisabled(t *testing.T) {
@@ -84,26 +82,7 @@ func TestRequestMetrics_WithTelemetryDisabled(t *testing.T) {
 }
 
 func TestRequestMetrics_WithErrorStatus(t *testing.T) {
-	// Setup real telemetry system
-	exporter := exporters.NewPrometheusExporter("test", ":0")
-	require.NoError(t, exporter.Start())
-	defer func() {
-		_ = exporter.Stop()
-	}()
-
-	config := &telemetry.Config{
-		Enabled: true,
-		Emitter: exporter,
-	}
-
-	sys, err := telemetry.NewSystem(config)
-	require.NoError(t, err)
-
-	originalTelemetry := observability.TelemetrySystem
-	observability.TelemetrySystem = sys
-	defer func() {
-		observability.TelemetrySystem = originalTelemetry
-	}()
+	collector := setupTelemetry(t)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -116,32 +95,13 @@ func TestRequestMetrics_WithErrorStatus(t *testing.T) {
 
 	middleware.ServeHTTP(rec, req)
 
-	// Should record metrics including error counter
-	metrics := exporter.GetMetrics()
-	assert.NotEmpty(t, metrics, "Metrics should be recorded for error responses")
+	assert.Greater(t, collector.CountMetricsByName("http_requests_total"), 0)
+	assert.Greater(t, collector.CountMetricsByName("http_errors_total"), 0,
+		"expected http_errors_total metric for non-2xx response")
 }
 
 func TestRequestMetrics_WithRequestSize(t *testing.T) {
-	// Setup real telemetry system
-	exporter := exporters.NewPrometheusExporter("test", ":0")
-	require.NoError(t, exporter.Start())
-	defer func() {
-		_ = exporter.Stop()
-	}()
-
-	config := &telemetry.Config{
-		Enabled: true,
-		Emitter: exporter,
-	}
-
-	sys, err := telemetry.NewSystem(config)
-	require.NoError(t, err)
-
-	originalTelemetry := observability.TelemetrySystem
-	observability.TelemetrySystem = sys
-	defer func() {
-		observability.TelemetrySystem = originalTelemetry
-	}()
+	collector := setupTelemetry(t)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -149,39 +109,18 @@ func TestRequestMetrics_WithRequestSize(t *testing.T) {
 
 	middleware := RequestMetrics(handler)
 
-	// Create request with content length
 	req := httptest.NewRequest("POST", "/test", nil)
 	req.Header.Set("Content-Length", "1024")
 	rec := httptest.NewRecorder()
 
 	middleware.ServeHTTP(rec, req)
 
-	// Should record request size metric
-	metrics := exporter.GetMetrics()
-	assert.NotEmpty(t, metrics, "Metrics should be recorded including request size")
+	assert.Greater(t, collector.CountMetricsByName("http_request_size_bytes"), 0,
+		"expected http_request_size_bytes gauge to be emitted")
 }
 
 func TestRequestMetrics_WithResponseSize(t *testing.T) {
-	// Setup real telemetry system
-	exporter := exporters.NewPrometheusExporter("test", ":0")
-	require.NoError(t, exporter.Start())
-	defer func() {
-		_ = exporter.Stop()
-	}()
-
-	config := &telemetry.Config{
-		Enabled: true,
-		Emitter: exporter,
-	}
-
-	sys, err := telemetry.NewSystem(config)
-	require.NoError(t, err)
-
-	originalTelemetry := observability.TelemetrySystem
-	observability.TelemetrySystem = sys
-	defer func() {
-		observability.TelemetrySystem = originalTelemetry
-	}()
+	collector := setupTelemetry(t)
 
 	responseBody := "test response with some content"
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -196,9 +135,8 @@ func TestRequestMetrics_WithResponseSize(t *testing.T) {
 
 	middleware.ServeHTTP(rec, req)
 
-	// Should record response size metric
-	metrics := exporter.GetMetrics()
-	assert.NotEmpty(t, metrics, "Metrics should be recorded including response size")
+	assert.Greater(t, collector.CountMetricsByName("http_response_size_bytes"), 0,
+		"expected http_response_size_bytes metric to be emitted")
 }
 
 func TestGetEndpointPattern_StandardPaths(t *testing.T) {
@@ -226,32 +164,12 @@ func TestGetEndpointPattern_StandardPaths(t *testing.T) {
 }
 
 func TestRequestMetrics_WithRequestID(t *testing.T) {
-	// Setup real telemetry system
-	exporter := exporters.NewPrometheusExporter("test", ":0")
-	require.NoError(t, exporter.Start())
-	defer func() {
-		_ = exporter.Stop()
-	}()
-
-	config := &telemetry.Config{
-		Enabled: true,
-		Emitter: exporter,
-	}
-
-	sys, err := telemetry.NewSystem(config)
-	require.NoError(t, err)
-
-	originalTelemetry := observability.TelemetrySystem
-	observability.TelemetrySystem = sys
-	defer func() {
-		observability.TelemetrySystem = originalTelemetry
-	}()
+	collector := setupTelemetry(t)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	// Apply RequestID middleware first, then RequestMetrics
 	middleware := RequestID(RequestMetrics(handler))
 
 	req := httptest.NewRequest("GET", "/test", nil)
@@ -260,39 +178,15 @@ func TestRequestMetrics_WithRequestID(t *testing.T) {
 
 	middleware.ServeHTTP(rec, req)
 
-	// Request ID should be in response header
 	assert.Equal(t, "test-request-id", rec.Header().Get("X-Request-ID"))
-
-	// Metrics should be recorded
-	metrics := exporter.GetMetrics()
-	assert.NotEmpty(t, metrics, "Metrics should be recorded")
+	assert.Greater(t, collector.CountMetricsByName("http_requests_total"), 0)
 }
 
 func TestRequestMetrics_DurationMeasurement(t *testing.T) {
-	// Setup real telemetry system
-	exporter := exporters.NewPrometheusExporter("test", ":0")
-	require.NoError(t, exporter.Start())
-	defer func() {
-		_ = exporter.Stop()
-	}()
+	collector := setupTelemetry(t)
 
-	config := &telemetry.Config{
-		Enabled: true,
-		Emitter: exporter,
-	}
-
-	sys, err := telemetry.NewSystem(config)
-	require.NoError(t, err)
-
-	originalTelemetry := observability.TelemetrySystem
-	observability.TelemetrySystem = sys
-	defer func() {
-		observability.TelemetrySystem = originalTelemetry
-	}()
-
-	// Handler with artificial delay
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(10 * time.Millisecond) // Small delay
+		time.Sleep(10 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -305,8 +199,7 @@ func TestRequestMetrics_DurationMeasurement(t *testing.T) {
 	middleware.ServeHTTP(rec, req)
 	elapsed := time.Since(start)
 
-	// Should record duration metric
-	metrics := exporter.GetMetrics()
-	assert.NotEmpty(t, metrics, "Duration metrics should be recorded")
 	assert.True(t, elapsed >= 10*time.Millisecond, "Should have waited at least 10ms")
+	assert.Greater(t, collector.CountMetricsByName("http_request_duration_ms"), 0,
+		"expected http_request_duration_ms metric to be emitted")
 }

@@ -12,6 +12,7 @@ import (
 
 	apperrors "github.com/fulmenhq/forge-workhorse-groningen/internal/errors"
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/server/handlers"
 	servermw "github.com/fulmenhq/forge-workhorse-groningen/internal/server/middleware"
 )
 
@@ -56,6 +57,9 @@ func New(host string, port int) *Server {
 		host:   host,
 		port:   port,
 	}
+
+	// Ensure handlers use the centralized error responder
+	handlers.SetHTTPErrorResponder(HandleError)
 
 	// Register routes
 	s.registerRoutes()

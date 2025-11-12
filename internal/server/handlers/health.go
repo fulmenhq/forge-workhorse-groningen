@@ -99,6 +99,13 @@ func (hm *HealthManager) HealthHandler(w http.ResponseWriter, r *http.Request) {
 	checks := hm.runHealthChecks(checkCtx)
 	status := hm.determineOverallStatus(checks)
 
+	if status == "unhealthy" {
+		envelope := errors.NewErrorEnvelope("SERVICE_UNAVAILABLE", "aggregate health check failed")
+		envelope = enrichHealthEnvelope(envelope, "", status, checks)
+		respondWithError(w, r, envelope)
+		return
+	}
+
 	response := HealthResponse{
 		Status:    status,
 		Version:   hm.version,
@@ -106,14 +113,8 @@ func (hm *HealthManager) HealthHandler(w http.ResponseWriter, r *http.Request) {
 		Checks:    checks,
 	}
 
-	// Return appropriate status code
-	statusCode := http.StatusOK
-	if status == "unhealthy" {
-		statusCode = http.StatusServiceUnavailable
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
+	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(response)
 }
 
@@ -129,19 +130,20 @@ func (hm *HealthManager) LivenessHandler(w http.ResponseWriter, r *http.Request)
 	checks := hm.runHealthChecks(checkCtx)
 	status := hm.determineOverallStatus(checks)
 
+	if status == "unhealthy" {
+		envelope := errors.NewErrorEnvelope("SERVICE_UNAVAILABLE", "liveness probe failed")
+		envelope = enrichHealthEnvelope(envelope, "live", status, checks)
+		respondWithError(w, r, envelope)
+		return
+	}
+
 	response := ProbeResponse{
 		Status:    status,
 		Timestamp: time.Now().UTC(),
 	}
 
-	// Return appropriate status code
-	statusCode := http.StatusOK
-	if status == "unhealthy" {
-		statusCode = http.StatusServiceUnavailable
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
+	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(response)
 }
 
@@ -157,19 +159,20 @@ func (hm *HealthManager) ReadinessHandler(w http.ResponseWriter, r *http.Request
 	checks := hm.runHealthChecks(checkCtx)
 	status := hm.determineOverallStatus(checks)
 
+	if status == "unhealthy" {
+		envelope := errors.NewErrorEnvelope("SERVICE_UNAVAILABLE", "readiness probe failed")
+		envelope = enrichHealthEnvelope(envelope, "ready", status, checks)
+		respondWithError(w, r, envelope)
+		return
+	}
+
 	response := ProbeResponse{
 		Status:    status,
 		Timestamp: time.Now().UTC(),
 	}
 
-	// Return appropriate status code
-	statusCode := http.StatusOK
-	if status == "unhealthy" {
-		statusCode = http.StatusServiceUnavailable
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
+	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(response)
 }
 
@@ -185,20 +188,58 @@ func (hm *HealthManager) StartupHandler(w http.ResponseWriter, r *http.Request) 
 	checks := hm.runHealthChecks(checkCtx)
 	status := hm.determineOverallStatus(checks)
 
+	if status == "unhealthy" {
+		envelope := errors.NewErrorEnvelope("SERVICE_UNAVAILABLE", "startup probe failed")
+		envelope = enrichHealthEnvelope(envelope, "startup", status, checks)
+		respondWithError(w, r, envelope)
+		return
+	}
+
 	response := ProbeResponse{
 		Status:    status,
 		Timestamp: time.Now().UTC(),
 	}
 
-	// Return appropriate status code
-	statusCode := http.StatusOK
-	if status == "unhealthy" {
-		statusCode = http.StatusServiceUnavailable
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(response)
+}
+
+func enrichHealthEnvelope(envelope *errors.ErrorEnvelope, probe, status string, checks map[string]string) *errors.ErrorEnvelope {
+	if envelope == nil {
+		return nil
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	_ = json.NewEncoder(w).Encode(response)
+	details := map[string]interface{}{
+		"status": status,
+	}
+	if len(checks) > 0 {
+		details["checks"] = checks
+	}
+	if probe != "" {
+		details["probe"] = probe
+	}
+	envelope = envelope.WithDetails(details)
+
+	contextData := map[string]interface{}{
+		"status": status,
+	}
+	if probe != "" {
+		contextData["probe"] = probe
+	}
+
+	var unhealthy []string
+	for name, result := range checks {
+		if result != "healthy" {
+			unhealthy = append(unhealthy, name)
+		}
+	}
+	if len(unhealthy) > 0 {
+		contextData["unhealthy_checks"] = unhealthy
+	}
+
+	envelope, _ = envelope.WithContext(contextData)
+	return envelope
 }
 
 // Global health manager instance
@@ -218,83 +259,46 @@ func GetHealthManager() *HealthManager {
 func LivenessHandler(w http.ResponseWriter, r *http.Request) {
 	if globalHealthManager != nil {
 		globalHealthManager.LivenessHandler(w, r)
-	} else {
-		// Fallback if not initialized
-		response := ProbeResponse{
-			Status:    "healthy",
-			Timestamp: time.Now().UTC(),
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(response)
+		return
 	}
+
+	envelope := errors.NewErrorEnvelope("SERVICE_UNAVAILABLE", "health manager not initialized")
+	envelope = enrichHealthEnvelope(envelope, "live", "unknown", nil)
+	respondWithError(w, r, envelope)
 }
 
 // ReadinessHandler is the backward-compatible handler that uses the global manager
 func ReadinessHandler(w http.ResponseWriter, r *http.Request) {
 	if globalHealthManager != nil {
 		globalHealthManager.ReadinessHandler(w, r)
-	} else {
-		// Fallback if not initialized
-		response := ProbeResponse{
-			Status:    "healthy",
-			Timestamp: time.Now().UTC(),
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(response)
+		return
 	}
+
+	envelope := errors.NewErrorEnvelope("SERVICE_UNAVAILABLE", "health manager not initialized")
+	envelope = enrichHealthEnvelope(envelope, "ready", "unknown", nil)
+	respondWithError(w, r, envelope)
 }
 
 // StartupHandler is the backward-compatible handler that uses the global manager
 func StartupHandler(w http.ResponseWriter, r *http.Request) {
 	if globalHealthManager != nil {
 		globalHealthManager.StartupHandler(w, r)
-	} else {
-		// Fallback if not initialized
-		response := ProbeResponse{
-			Status:    "healthy",
-			Timestamp: time.Now().UTC(),
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(response)
+		return
 	}
+
+	envelope := errors.NewErrorEnvelope("SERVICE_UNAVAILABLE", "health manager not initialized")
+	envelope = enrichHealthEnvelope(envelope, "startup", "unknown", nil)
+	respondWithError(w, r, envelope)
 }
 
 // HealthHandler is the backward-compatible handler that uses the global manager
 func HealthHandler(w http.ResponseWriter, r *http.Request) {
 	if globalHealthManager != nil {
 		globalHealthManager.HealthHandler(w, r)
-	} else {
-		// Fallback if not initialized - use structured error
-		err := errors.NewErrorEnvelope("SERVICE_UNAVAILABLE", "Health manager not initialized")
-		writeHealthError(w, r, err, http.StatusServiceUnavailable)
+		return
 	}
-}
 
-// writeHealthError writes structured error for health endpoints
-func writeHealthError(w http.ResponseWriter, r *http.Request, err *errors.ErrorEnvelope, statusCode int) {
-	response := struct {
-		Error struct {
-			Code      string `json:"code"`
-			Message   string `json:"message"`
-			RequestID string `json:"request_id,omitempty"`
-		} `json:"error"`
-		Status    string `json:"status"`
-		Timestamp string `json:"timestamp"`
-	}{}
-
-	response.Error.Code = err.Code
-	response.Error.Message = err.Message
-	response.Error.RequestID = err.CorrelationID
-	response.Status = "unhealthy"
-	response.Timestamp = time.Now().UTC().Format(time.RFC3339)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	_ = json.NewEncoder(w).Encode(response)
+	envelope := errors.NewErrorEnvelope("SERVICE_UNAVAILABLE", "health manager not initialized")
+	envelope = enrichHealthEnvelope(envelope, "aggregate", "unknown", nil)
+	respondWithError(w, r, envelope)
 }

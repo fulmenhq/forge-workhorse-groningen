@@ -88,7 +88,7 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 		if err := observability.InitMetrics(identity.BinaryName, metricsPort, namespace); err != nil {
 			observability.ServerLogger.Error("Failed to initialize metrics",
 				zap.Error(err))
-			return errwrap.WrapInternal(context.Background(), err, "metrics initialization failed")
+			return errwrap.WrapInternal(cmd.Context(), err, "metrics initialization failed")
 		}
 
 		observability.ServerLogger.Info("Initializing server",
@@ -141,7 +141,7 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 			defer cancel()
 
 			if err := srv.Shutdown(shutdownCtx); err != nil {
-				return errwrap.WrapInternal(context.Background(), err, "server shutdown failed")
+				return errwrap.WrapInternal(ctx, err, "server shutdown failed")
 			}
 
 			observability.ServerLogger.Info("HTTP server stopped gracefully")
@@ -161,7 +161,7 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 				observability.ServerLogger.Error("Failed to reload config file",
 					zap.String("file", viper.ConfigFileUsed()),
 					zap.Error(err))
-				return errwrap.WrapConfigInvalid(context.Background(), err, "config reload failed")
+				return errwrap.WrapConfigInvalid(ctx, err, "config reload failed")
 			}
 
 			observability.ServerLogger.Info("Configuration reloaded successfully",
@@ -205,7 +205,7 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 
 		// Wait for error or shutdown completion
 		if err := <-errChan; err != nil {
-			return errwrap.WrapInternal(context.Background(), err, "server error")
+			return errwrap.WrapInternal(cmd.Context(), err, "server error")
 		}
 
 		return nil

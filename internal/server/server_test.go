@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	apperrors "github.com/fulmenhq/forge-workhorse-groningen/internal/errors"
 )
 
 func TestServerUsesStandardErrorHandlers(t *testing.T) {
@@ -19,7 +21,7 @@ func TestServerUsesStandardErrorHandlers(t *testing.T) {
 		t.Fatalf("expected status 404, got %d", rec.Code)
 	}
 
-	var body ErrorResponse
+	var body apperrors.HTTPErrorResponse
 	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
 		t.Fatalf("failed to decode error response: %v", err)
 	}

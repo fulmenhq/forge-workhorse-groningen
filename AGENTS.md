@@ -127,7 +127,7 @@ Committer-of-Record: Dave Thompson <dave.thompson@3leaps.net> [@3leapsdave]
 ### DO NOT
 
 - **Edit App Identity Directly**: `.fulmen/app.yaml` is the template identity - CDRL users will customize
-- **Commit Planning Files**: Never attempt to commit files in `.plans/` directory - it is gitignored
+- **Commit Planning Files**: `.plans/` is permanently gitignored—never add, stage, or attempt to commit anything under this directory
 - **Skip Tests**: Never commit code without passing tests
 - **Ignore Linting**: All code must pass linting before commit
 - **Commit Without Formatting**: Run `make fmt` before every commit

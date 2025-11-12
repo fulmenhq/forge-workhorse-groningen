@@ -61,17 +61,33 @@ func TestHealthHandlerReturnsServiceUnavailableWhenUnhealthy(t *testing.T) {
 		t.Fatalf("expected status 503, got %d", rec.Code)
 	}
 
-	var resp HealthResponse
+	var resp struct {
+		Error struct {
+			Code    string                 `json:"code"`
+			Message string                 `json:"message"`
+			Details map[string]interface{} `json:"details"`
+		} `json:"error"`
+	}
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if resp.Status != "unhealthy" {
-		t.Fatalf("expected unhealthy status, got %s", resp.Status)
+	if resp.Error.Code != "SERVICE_UNAVAILABLE" {
+		t.Fatalf("expected SERVICE_UNAVAILABLE error code, got %s", resp.Error.Code)
 	}
 
-	if resp.Checks["db"] != "unhealthy" {
-		t.Fatalf("expected db check to be unhealthy, got %s", resp.Checks["db"])
+	details := resp.Error.Details
+	if details == nil {
+		t.Fatalf("expected error details to include probe context")
+	}
+
+	tests, ok := details["checks"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected checks in error details")
+	}
+
+	if status, ok := tests["db"].(string); !ok || status != "unhealthy" {
+		t.Fatalf("expected db check to be unhealthy, got %v", tests["db"])
 	}
 }
 
