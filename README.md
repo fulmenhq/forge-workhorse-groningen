@@ -79,7 +79,13 @@ forge-workhorse-groningen/
 │   ├── config/                 # Config management
 │   └── observability/          # Logging, metrics setup
 ├── config/
-│   └── groningen.yaml          # App defaults (Layer 2)
+│   └── groningen/
+│       └── v1.0.0/
+│           └── groningen-defaults.yaml  # Template defaults (Layer 1)
+├── schemas/
+│   └── groningen/
+│       └── v1.0.0/
+│           └── config.schema.json       # Config validation schema
 ├── docs/
 │   ├── README.md
 │   ├── DEVELOPMENT.md
@@ -92,10 +98,9 @@ forge-workhorse-groningen/
 
 ### Dependencies
 
-- **gofulmen v0.1.8** - Fulmen helper library (config, logging, telemetry, etc.)
-- **goneat v0.3.0** - Optional DX tooling
+- **gofulmen v0.1.10+** - Fulmen helper library (config, logging, telemetry, schema validation)
+- **goneat v0.3.0+** - Optional DX tooling
 - **cobra** - CLI framework (Fulmen standard for Go)
-- **viper** - Configuration management
 - **chi** - HTTP router (lightweight, idiomatic)
 
 ## CLI Commands
@@ -117,13 +122,45 @@ workhorse doctor                # Run checks, suggest fixes
 
 ## Configuration
 
+Groningen uses **gofulmen/config** for canonical three-layer configuration with schema validation.
+
+### Config Loader
+
+Configuration is managed by `internal/config/loader.go`, which implements:
+
+- **Typed config structs** (no runtime string lookups)
+- **Schema validation** via JSON Schema
+- **Absolute path resolution** (works from any directory, including tests)
+- **Graceful reload** on SIGHUP with logger reconfiguration
+
 ### Three-Layer Config Pattern
 
-1. **Layer 1 (Crucible)**: Default schemas and configs from SSOT (via gofulmen)
-2. **Layer 2 (User)**: Your config file at `~/.config/workhorse-groningen/config.yaml`
-3. **Layer 3 (Runtime)**: Environment variables and CLI flags
+1. **Layer 1 (Template Defaults)**: `config/groningen/v1.0.0/groningen-defaults.yaml`
+   - Shipped with the template
+   - Provides sensible defaults for all configuration options
+   - Validated against `schemas/groningen/v1.0.0/config.schema.json`
 
-Priority: CLI flags > Environment variables > Config file > Crucible defaults
+2. **Layer 2 (User Overrides)**: `~/.config/<vendor>/<binary-name>.yaml`
+   - Discovered via app identity (`.fulmen/app.yaml`)
+   - Merged on top of template defaults
+   - Optional (falls back to defaults if not present)
+
+3. **Layer 3 (Runtime Overrides)**: Environment variables and CLI flags
+   - Highest priority
+   - Environment variables use prefix from app identity (default: `GRONINGEN_`)
+   - CLI flags override everything
+
+**Priority**: CLI flags > Environment variables > User config > Template defaults
+
+### Schema Validation
+
+Configuration is validated against the JSON Schema at:
+
+```
+schemas/groningen/v1.0.0/config.schema.json
+```
+
+Validation happens on load and reload. Invalid configuration prevents application startup or reload (falls back to previous valid config).
 
 ### Environment Variables
 

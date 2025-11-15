@@ -68,13 +68,43 @@ MYAPI_HOST=localhost
 MYAPI_LOG_LEVEL=info
 ```
 
-#### 3.4 Update Configuration Files
+#### 3.4 Update Configuration and Schema Files
 
-Rename config files to match your identity:
+**Important**: Groningen uses a versioned config and schema structure that must be renamed during CDRL to match your application identity.
+
+**Rename configuration defaults:**
 
 ```bash
-mv config/groningen.yaml config/myapi.yaml
+# Rename the config category directory
+mv config/groningen config/myapi
+# Result: config/myapi/v1.0.0/groningen-defaults.yaml
+
+# Rename the defaults file to match your app
+mv config/myapi/v1.0.0/groningen-defaults.yaml config/myapi/v1.0.0/myapi-defaults.yaml
 ```
+
+**Rename schema files:**
+
+```bash
+# Rename the schema category directory
+mv schemas/groningen schemas/myapi
+# Result: schemas/myapi/v1.0.0/config.schema.json
+```
+
+**Update loader configuration** in `internal/config/loader.go`:
+
+```go
+// Change Category from "groningen" to your app name
+opts := gfconfig.LayeredConfigOptions{
+    Category:     "myapi",  // ← Change this
+    Version:      "v1.0.0",
+    DefaultsFile: "myapi-defaults.yaml",  // ← Change this
+    SchemaID:     "myapi/v1.0.0/config",  // ← Change this
+    // ... rest of options
+}
+```
+
+**Why this matters**: The config loader uses the category name to find your defaults, and the schema ID must match the directory structure for validation to work correctly.
 
 #### 3.5 Customize Application Logic
 
@@ -135,6 +165,9 @@ After refitting, verify these work:
 
 - [ ] App identity loads from `.fulmen/app.yaml`
 - [ ] Environment variables use your prefix (`MYAPI_*`)
+- [ ] Config defaults directory renamed (`config/myapi/v1.0.0/`)
+- [ ] Schema directory renamed (`schemas/myapi/v1.0.0/`)
+- [ ] Loader configuration updated in `internal/config/loader.go`
 - [ ] Config file loads from correct path
 - [ ] CLI shows your app name in help
 - [ ] HTTP `/version` endpoint shows your app name

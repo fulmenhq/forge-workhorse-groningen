@@ -17,6 +17,26 @@ This release integrates the App Identity module from gofulmen v0.1.9 to bring Gr
 
 #### Features
 
+**Unified Error & Telemetry Pipeline** (`internal/errors`, `internal/server`, `internal/cmd`):
+
+- Standardized HTTP error handling via shared gofulmen envelopes, ensuring consistent JSON responses, correlation IDs, logging, and metrics across handlers, middleware, and CLI call sites.
+- Context-aware `Wrap*` helpers propagate request IDs from Cobra commands and HTTP middleware, eliminating synthetic fallbacks in audit scenarios.
+- Health probes now package per-check detail within structured envelopes while maintaining compatibility with telemetry and alerting pipelines.
+
+**Portable Metrics Testing** (`internal/server/middleware/metrics_test.go`, `test/integration/metrics_test.go`):
+
+- Switched unit and integration suites to gofulmen's in-memory collectors and explicit IPv4 listeners so `go test ./...` passes inside restricted sandboxes.
+- Added permission-aware guards for httptest servers, providing friendly skips when environments forbid socket binding.
+
+**gofulmen/config Integration** (`internal/config/`, `config/groningen/v1.0.0/`, `schemas/groningen/v1.0.0/`):
+
+- **Layered Configuration**: Three-layer config pattern (defaults → user file → env vars) with schema validation via gofulmen/config
+- **Absolute Path Resolution**: Repository root detection for config/schema loading from any working directory (tests, CLI, subdirectories)
+- **CDRL-Friendly Structure**: Versioned config defaults (`config/groningen/v1.0.0/groningen-defaults.yaml`) and schemas (`schemas/groningen/v1.0.0/config.schema.json`)
+- **Type-Safe Access**: Replaced all Viper calls with typed config structs and mapstructure tags
+- **Config Reload**: SIGHUP handler with validation and logger reconfiguration
+- **Backward Compatibility**: Old config paths still work (XDG migration path maintained)
+
 **App Identity Integration** (`internal/cmd/root.go`, `internal/observability/`):
 
 - **Identity Loading**: Load app metadata from `.fulmen/app.yaml` at startup
@@ -31,15 +51,30 @@ This release integrates the App Identity module from gofulmen v0.1.9 to bring Gr
 - **Simplified Refit**: No need to search/replace env var prefixes across codebase
 - **Documentation**: Updated README with clear CDRL instructions
 
+**Files Added**:
+
+```
+.fulmen/app.yaml                                    # App identity definition
+config/groningen/v1.0.0/groningen-defaults.yaml     # Layer 1 config defaults
+schemas/groningen/v1.0.0/config.schema.json         # Config validation schema
+internal/config/config.go                           # Typed config structs
+internal/config/loader.go                           # Config loader with path resolution
+internal/config/loader_test.go                      # Config unit tests
+internal/errors/                                    # Error handling package
+docs/architecture/decisions/ADR-0001-*.md           # Repository root detection ADR
+```
+
 **Files Modified**:
 
 ```
-.fulmen/app.yaml                     # NEW: App identity definition
-internal/cmd/root.go                 # Load identity, use for config/env vars
-internal/cmd/serve.go                # Pass namespace to logger/metrics
+internal/cmd/root.go                 # Load identity, config integration
+internal/cmd/serve.go                # Signal handlers, config reload, telemetry
 internal/observability/logger.go     # Accept optional telemetry namespace
 internal/observability/metrics.go    # Accept optional telemetry namespace
+internal/server/                     # Error envelopes, standard endpoints
+Makefile                             # Added precommit/prepush targets
 README.md                            # Updated CDRL section with identity workflow
+go.mod                               # Upgraded gofulmen to v0.1.14
 ```
 
 #### Quality Assurance
@@ -52,8 +87,9 @@ README.md                            # Updated CDRL section with identity workfl
 
 #### Dependencies
 
-- **gofulmen**: Linked locally (../gofulmen) for v0.1.9+ features
-- **Crucible**: Auto-upgraded v0.2.1 → v0.2.6 (transitive, provides app identity schema)
+- **gofulmen**: v0.1.14 (upgraded from v0.1.7) - App Identity, Signal Handling, Exit Codes, Config, Telemetry modules
+- **crucible**: v0.2.14 (auto-upgraded from v0.2.1, transitive via gofulmen) - Schemas, standards, and validation
+- **goneat**: v0.3.2 - Formatting, assessment, and git hooks integration
 
 #### Migration Notes for Template Users
 
