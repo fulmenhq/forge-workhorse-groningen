@@ -4,7 +4,67 @@ This document tracks release notes for forge-workhorse-groningen releases.
 
 > **Convention**: Keep only the latest 3 releases here to prevent file bloat. Older releases are archived in `docs/releases/`.
 
-## [0.1.0] - 2025-11-05 (In Development)
+## [0.1.1] - 2025-11-15
+
+### Documentation Corrections for Public Release
+
+**Release Type**: Patch Release (Documentation Fixes)
+**Status**: ✅ Released
+
+#### Overview
+
+This patch release corrects critical documentation inaccuracies identified during final review before the public repository release. No code changes - purely documentation corrections to ensure accuracy for public users.
+
+#### Documentation Fixes
+
+**README.md Corrections**:
+
+- Remove outdated local gofulmen references (now using public v0.1.14)
+- Update dependency version numbers (gofulmen v0.1.10 → v0.1.14, goneat v0.3.0+ → v0.3.2)
+- Remove "WIP" markers from all completed features (serve, version, health, envinfo, doctor commands)
+- Correct binary name throughout CLI examples (`workhorse` → `groningen`)
+- Fix CDRL config/schema renaming instructions (now references comprehensive guide)
+- Update configuration description (viper → gofulmen/config to reflect actual implementation)
+- Fix MAINTAINERS.md link to point to local file
+- Remove broken links to non-public Crucible documentation
+- Update Standards section to reference public Crucible repository
+
+**docs/groningen-overview.md Corrections**:
+
+- Update Current Version: 0.1.0 → 0.1.1
+- Update Gofulmen Version: 0.1.7 (local replace) → 0.1.14
+- Update Crucible Version: 2025.10.5 → 0.2.14
+
+#### Quality Assurance
+
+- ✅ All documentation reviewed for accuracy
+- ✅ Version references synchronized
+- ✅ Links verified (internal and external)
+- ✅ CLI examples tested with correct binary name
+- ✅ CDRL workflow instructions accurate
+
+#### Files Modified
+
+```
+VERSION                          # Bumped to 0.1.1
+README.md                        # 13 corrections
+docs/groningen-overview.md       # 3 version updates
+CHANGELOG.md                     # v0.1.1 entry added
+RELEASE_NOTES.md                 # This document
+docs/releases/v0.1.1.md          # Archived release notes
+```
+
+#### Migration Notes
+
+No migration required - documentation-only release.
+
+#### Known Issues
+
+None - documentation is now accurate for public release.
+
+---
+
+## [0.1.0] - 2025-11-15
 
 ### App Identity Module Integration
 

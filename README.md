@@ -31,7 +31,6 @@ Level 0: Crucible (SSOT - schemas, standards, docs)
 
 - Go 1.25+ ([install](https://go.dev/doc/install))
 - golangci-lint ([install](https://golangci-lint.run/welcome/install/))
-- Access to gofulmen (local at `../gofulmen`)
 
 ### Bootstrap
 
@@ -40,7 +39,7 @@ Level 0: Crucible (SSOT - schemas, standards, docs)
 git clone https://github.com/fulmenhq/forge-workhorse-groningen.git my-app
 cd my-app
 
-# Install dependencies (including gofulmen from local path)
+# Install dependencies
 make bootstrap
 
 # Run server
@@ -65,12 +64,12 @@ forge-workhorse-groningen/
 ├── internal/
 │   ├── cmd/                    # Cobra commands
 │   │   ├── root.go             # Root command + global flags
-│   │   ├── serve.go            # HTTP server command (WIP)
-│   │   ├── version.go          # Version command (WIP)
-│   │   ├── health.go           # Health self-check (WIP)
-│   │   ├── envinfo.go          # Environment info (WIP)
-│   │   └── doctor.go           # Diagnostics (WIP)
-│   ├── server/                 # HTTP server implementation (WIP)
+│   │   ├── serve.go            # HTTP server command
+│   │   ├── version.go          # Version command
+│   │   ├── health.go           # Health self-check
+│   │   ├── envinfo.go          # Environment info
+│   │   └── doctor.go           # Diagnostics
+│   ├── server/                 # HTTP server implementation
 │   │   ├── server.go
 │   │   ├── routes.go
 │   │   ├── handlers/           # Health, version, metrics
@@ -98,8 +97,8 @@ forge-workhorse-groningen/
 
 ### Dependencies
 
-- **gofulmen v0.1.10+** - Fulmen helper library (config, logging, telemetry, schema validation)
-- **goneat v0.3.0+** - Optional DX tooling
+- **gofulmen v0.1.14** - Fulmen helper library (config, logging, telemetry, schema validation)
+- **goneat v0.3.2** - Optional DX tooling
 - **cobra** - CLI framework (Fulmen standard for Go)
 - **chi** - HTTP router (lightweight, idiomatic)
 
@@ -107,17 +106,17 @@ forge-workhorse-groningen/
 
 ```bash
 # Server management
-workhorse serve                 # Start HTTP server
-workhorse serve --port 9000     # Custom port
+groningen serve                 # Start HTTP server
+groningen serve --port 9000     # Custom port
 
 # Information commands
-workhorse version               # Basic version
-workhorse version --extended    # Full version + SSOT info
-workhorse health                # Self-check
-workhorse envinfo               # Dump config/env/SSOT
+groningen version               # Basic version
+groningen version --extended    # Full version + SSOT info
+groningen health                # Self-check
+groningen envinfo               # Dump config/env/SSOT
 
 # Diagnostics
-workhorse doctor                # Run checks, suggest fixes
+groningen doctor                # Run checks, suggest fixes
 ```
 
 ## Configuration
@@ -257,8 +256,8 @@ To create your own application from this template:
    - Customize `.env.example` with your variables
    - No need to rename prefixes - app identity handles this!
 
-   **Step 4: Update Config Files**
-   - Rename `config/groningen.yaml` → `config/myapi.yaml`
+   **Step 4: Update Config and Schema Files**
+   - See [CDRL Guide](docs/development/fulmen_cdrl_guide.md) for detailed config/schema renaming instructions
 
    **Step 5: Customize Application**
    - Replace placeholder business logic in `internal/core/`
@@ -340,7 +339,7 @@ Send SIGHUP to reload configuration without restart:
 
 ```bash
 # Send SIGHUP signal
-kill -HUP $(pgrep workhorse)
+kill -HUP $(pgrep groningen)
 
 # Config reload attempts to re-read config file and apply changes
 # Some changes may still require restart (e.g., port changes)
@@ -353,7 +352,7 @@ Enable remote signal injection via HTTP (for Kubernetes sidecars, etc.):
 ```bash
 # Enable by setting admin token
 export GRONINGEN_ADMIN_TOKEN="your-secret-token"
-workhorse serve
+groningen serve
 
 # Send signal via HTTP
 curl -X POST http://localhost:8080/admin/signal \
@@ -378,7 +377,7 @@ Groningen uses standardized exit codes from the Foundry catalog for operational 
 
 ```bash
 # Check exit codes for automation
-workhorse health
+groningen health
 if [ $? -eq 0 ]; then
     echo "Service is healthy"
 elif [ $? -eq 63 ]; then
@@ -386,7 +385,7 @@ elif [ $? -eq 63 ]; then
 fi
 
 # Handle specific failures
-workhorse serve
+groningen serve
 exit_code=$?
 case $exit_code in
     0)
@@ -462,7 +461,7 @@ These helpers are wired into the chi router for 404/405 cases and can be reused 
 
 - [x] Project structure and dependencies
 - [x] Root command with global flags
-- [x] Configuration management (viper + three-layer pattern)
+- [x] Configuration management (gofulmen/config + three-layer pattern)
 - [x] Serve command (HTTP server with chi)
 - [x] Health endpoints (live, ready, startup)
 - [x] Version endpoint (full build info)
@@ -484,7 +483,7 @@ These helpers are wired into the chi router for 404/405 cases and can be reused 
 
 ## Contributing
 
-See [MAINTAINERS.md](../crucible/MAINTAINERS.md) for governance and [DEVELOPMENT.md](docs/DEVELOPMENT.md) for setup.
+See [MAINTAINERS.md](MAINTAINERS.md) for governance and project team information.
 
 ## Resources
 
@@ -493,7 +492,6 @@ See [MAINTAINERS.md](../crucible/MAINTAINERS.md) for governance and [DEVELOPMENT
 - [Crucible](https://github.com/fulmenhq/crucible) - SSOT for schemas, standards, docs
 - [Gofulmen](https://github.com/fulmenhq/gofulmen) - Go helper library
 - [Goneat](https://github.com/fulmenhq/goneat) - DX CLI tool
-- [Technical Manifesto](../crucible/docs/architecture/fulmen-technical-manifesto.md)
 
 ### Documentation
 
@@ -503,10 +501,7 @@ See [MAINTAINERS.md](../crucible/MAINTAINERS.md) for governance and [DEVELOPMENT
 
 ### Standards Applied
 
-- [Fulmen Workhorse Standard](../crucible/docs/architecture/fulmen-forge-workhorse-standard.md)
-- [Go Coding Standards](../crucible/docs/standards/coding/go.md)
-- [Go CLI (Cobra) Structure](../crucible/docs/standards/repository-structure/go/cli-cobra.md)
-- [HTTP REST Standards](../crucible/docs/standards/api/http-rest-standards.md)
+Groningen implements standards from the Fulmen ecosystem including the Forge Workhorse Standard, Go coding standards, CLI structure patterns, and HTTP REST standards. See the [Crucible repository](https://github.com/fulmenhq/crucible) for complete standard specifications.
 
 ## License
 

@@ -407,9 +407,9 @@ customHistogram := telemetry.Histogram("custom_duration_seconds")
 
 ## Version Information
 
-- **Current Version**: 0.1.0
-- **Gofulmen Version**: 0.1.7 (local replace)
-- **Crucible Version**: 2025.10.5
+- **Current Version**: 0.1.1
+- **Gofulmen Version**: 0.1.14
+- **Crucible Version**: 0.2.14
 - **Go Version**: 1.25.1+
 - **License**: MIT
 
