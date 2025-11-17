@@ -15,6 +15,7 @@ import (
 
 	"github.com/fulmenhq/gofulmen/appidentity"
 	gfconfig "github.com/fulmenhq/gofulmen/config"
+	"github.com/fulmenhq/gofulmen/pathfinder"
 	"github.com/fulmenhq/gofulmen/schema"
 	"github.com/go-viper/mapstructure/v2"
 )
@@ -30,41 +31,26 @@ var (
 // It looks for project markers like go.mod or .git directory.
 // This ensures config paths work correctly regardless of where the process is run from.
 //
-// TODO: Consider refactoring to use gofulmen/pathfinder.FindRepositoryRoot() when available.
-// This functionality would be a natural fit for pathfinder's upward traversal capabilities.
-// See: .plans/memos/gofulmen/config-path-resolution-issue.md for discussion.
+// This now uses gofulmen/pathfinder.FindRepositoryRoot() which provides:
+// - Security boundaries (home directory ceiling, max depth protection)
+// - Symlink loop detection
+// - Cross-platform compatibility
+// - Performance optimized (<30µs)
 func findProjectRoot() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current directory: %w", err)
 	}
 
-	current := cwd
-	for i := 0; i < 10; i++ { // Search up to 10 levels
-		// Check for project markers
-		if fileExists(filepath.Join(current, "go.mod")) {
-			return current, nil
-		}
-		if fileExists(filepath.Join(current, ".git")) {
-			return current, nil
-		}
-
-		// Move up one directory
-		parent := filepath.Dir(current)
-		if parent == current {
-			// Reached filesystem root
-			break
-		}
-		current = parent
+	// Use pathfinder with Go project markers (go.mod or .git)
+	// This replaces the manual implementation with a robust, well-tested solution
+	markers := []string{"go.mod", ".git"}
+	rootPath, err := pathfinder.FindRepositoryRoot(cwd, markers, pathfinder.WithMaxDepth(10))
+	if err != nil {
+		return "", fmt.Errorf("project root not found: %w", err)
 	}
 
-	return "", fmt.Errorf("project root not found (no go.mod or .git found)")
-}
-
-// fileExists checks if a file exists at the given path
-func fileExists(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && !info.IsDir()
+	return rootPath, nil
 }
 
 // EnvVarSpec defines environment variable mappings for config fields

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. Older entries are archived under `docs/releases/` once we ship tagged versions.
 
+## [0.1.2] - 2025-11-16
+
+### Changed
+
+- **Repository Root Discovery**: Replaced manual `findProjectRoot()` with `gofulmen/pathfinder.FindRepositoryRoot()` for improved security and robustness
+- **Dependencies**: Updated gofulmen v0.1.14 → v0.1.15, crucible v0.2.14 → v0.2.16
+
+### Improved
+
+- **Security**: Pathfinder provides home directory ceiling, symlink loop detection, and multi-tenant isolation
+- **Performance**: Repository root discovery now <30µs (well under spec targets)
+- **Code Quality**: Removed 22 lines of duplicate code, resolved TODO comment
+
 ## [0.1.1] - 2025-11-15
 
 ### Fixed

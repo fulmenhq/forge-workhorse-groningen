@@ -97,7 +97,7 @@ forge-workhorse-groningen/
 
 ### Dependencies
 
-- **gofulmen v0.1.14** - Fulmen helper library (config, logging, telemetry, schema validation)
+- **gofulmen v0.1.15** - Fulmen helper library (config, logging, telemetry, schema validation, pathfinder)
 - **goneat v0.3.2** - Optional DX tooling
 - **cobra** - CLI framework (Fulmen standard for Go)
 - **chi** - HTTP router (lightweight, idiomatic)
