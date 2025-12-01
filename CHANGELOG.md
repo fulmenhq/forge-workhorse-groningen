@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. Older entries are archived under `docs/releases/` once we ship tagged versions.
 
+## [0.1.3] - 2025-12-01
+
+### Changed
+
+- **Dependencies**: Upgraded gofulmen v0.1.15 → v0.1.20 (transitively pulls Crucible v0.2.20 via gofulmen)
+- **Version**: Bumped template version to 0.1.3
+
+### Quality
+
+- `make fmt`, `make lint`, `make test`, and `make build` verified for this release.
+
 ## [0.1.2] - 2025-11-16
 
 ### Changed
