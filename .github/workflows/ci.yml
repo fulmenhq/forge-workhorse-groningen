@@ -22,8 +22,8 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
-      - name: Install goneat (CI tooling)
-        run: go install github.com/fulmenhq/goneat@v0.3.2
+      - name: Bootstrap tools
+        run: make bootstrap
       - name: Format (fail on diff)
         run: |
           make fmt

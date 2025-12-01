@@ -14,6 +14,10 @@ GOTEST := $(GOCMD) test
 GOFMT := $(GOCMD) fmt
 GOMOD := $(GOCMD) mod
 
+# Tooling
+GONEAT_VERSION := v0.3.8
+GONEAT_BIN := $(firstword $(wildcard ./bin/goneat) $(shell command -v goneat 2>/dev/null))
+
 # Default target
 all: fmt test
 
@@ -52,15 +56,13 @@ help:  ## Show this help message
 bootstrap:  ## Install external tools (goneat) and dependencies
 	@echo "Installing external tools..."
 	@if [ "$(FORCE)" = "1" ] || [ "$(FORCE)" = "true" ]; then \
-		echo "→ Force installing goneat..."; \
-		go install github.com/fulmenhq/goneat@v0.3.2; \
+		rm -f ./bin/goneat; \
+	fi
+	@if [ ! -x "./bin/goneat" ]; then \
+		echo "→ Downloading goneat $(GONEAT_VERSION) to ./bin"; \
+		./scripts/install-goneat.sh; \
 	else \
-		if ! command -v goneat >/dev/null 2>&1; then \
-			echo "→ Installing goneat..."; \
-			go install github.com/fulmenhq/goneat@v0.3.2; \
-		else \
-			echo "→ goneat already installed"; \
-		fi; \
+		echo "→ goneat already available at ./bin/goneat"; \
 	fi
 	@echo "→ Downloading Go module dependencies..."
 	@go mod download
@@ -175,23 +177,23 @@ test-cov:  ## Run tests with coverage
 	@echo "✓ Coverage report: coverage.html"
 
 lint:  ## Run lint checks
-	@if ! command -v goneat >/dev/null 2>&1; then \
+	@if [ -z "$(GONEAT_BIN)" ]; then \
 		echo "❌ goneat not found. Run 'make bootstrap' first."; \
 		exit 1; \
 	fi
 	@echo "Running Go vet..."
 	@$(GOCMD) vet ./...
 	@echo "Running goneat assess..."
-	@goneat assess --categories lint
+	@$(GONEAT_BIN) assess --categories lint
 	@echo "✅ Lint checks passed"
 
 fmt:  ## Format code with goneat
-	@if ! command -v goneat >/dev/null 2>&1; then \
+	@if [ -z "$(GONEAT_BIN)" ]; then \
 		echo "❌ goneat not found. Run 'make bootstrap' first."; \
 		exit 1; \
 	fi
 	@echo "Formatting with goneat..."
-	@goneat format
+	@$(GONEAT_BIN) format
 	@echo "✅ Formatting completed"
 
 check-all: fmt lint test  ## Run all quality checks (ensures fmt, lint, test)
@@ -219,5 +221,5 @@ prepush:  ## Run pre-push hooks
 
 clean:  ## Clean build artifacts and reports
 	@echo "Cleaning artifacts..."
-	rm -rf bin/ coverage.out coverage.html
+	rm -rf bin/ dist/ coverage.out coverage.html
 	@echo "✅ Clean completed"
