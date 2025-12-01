@@ -59,10 +59,11 @@ bootstrap:  ## Install external tools (goneat) and dependencies
 		rm -f ./bin/goneat; \
 	fi
 	@if [ ! -x "./bin/goneat" ]; then \
-		echo "→ Downloading goneat $(GONEAT_VERSION) to ./bin"; \
+		echo "→ Downloading goneat $(GONEAT_VERSION) and required formatters to ./bin"; \
 		./scripts/install-goneat.sh; \
 	else \
-		echo "→ goneat already available at ./bin/goneat"; \
+		echo "→ goneat already available at ./bin/goneat (bootstrap will ensure formatters)"; \
+		./scripts/install-goneat.sh; \
 	fi
 	@echo "→ Downloading Go module dependencies..."
 	@go mod download
