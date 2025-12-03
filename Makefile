@@ -75,8 +75,8 @@ bootstrap-force:  ## Force reinstall external tools
 
 tools:  ## Verify external tools are available
 	@echo "Verifying external tools..."
-	@if command -v goneat >/dev/null 2>&1; then \
-		echo "✅ goneat: $$(goneat --version 2>&1 | head -n1)"; \
+	@if [ -n "$(GONEAT_BIN)" ]; then \
+		echo "✅ goneat: $$($(GONEAT_BIN) --version 2>&1 | head -n1)"; \
 	else \
 		echo "❌ goneat not found. Run 'make bootstrap' first."; \
 		exit 1; \
@@ -88,12 +88,12 @@ sync:  ## Sync assets from Crucible SSOT (placeholder)
 	@echo "✅ Sync target satisfied (no-op)"
 
 dependencies:  ## Generate SBOM for supply-chain security
-	@if ! command -v goneat >/dev/null 2>&1; then \
+	@if [ -z "$(GONEAT_BIN)" ]; then \
 		echo "❌ goneat not found. Run 'make bootstrap' first."; \
 		exit 1; \
 	fi
 	@echo "Generating Software Bill of Materials (SBOM)..."
-	@goneat dependencies --sbom --sbom-output sbom/groningen.cdx.json
+	@$(GONEAT_BIN) dependencies --sbom --sbom-output sbom/groningen.cdx.json
 	@echo "✅ SBOM generated at sbom/groningen.cdx.json"
 
 verify-dependencies:  ## Alias for dependencies (compatibility)
@@ -106,7 +106,7 @@ run:  ## Run server in development mode
 	@go run ./cmd/$(BINARY_NAME) serve --verbose
 
 version-bump:  ## Bump version (usage: make version-bump TYPE=patch|minor|major|calver)
-	@if ! command -v goneat >/dev/null 2>&1; then \
+	@if [ -z "$(GONEAT_BIN)" ]; then \
 		echo "❌ goneat not found. Run 'make bootstrap' first."; \
 		exit 1; \
 	fi
@@ -115,7 +115,7 @@ version-bump:  ## Bump version (usage: make version-bump TYPE=patch|minor|major|
 		exit 1; \
 	fi
 	@echo "Bumping version ($(TYPE))..."
-	@goneat version bump $(TYPE)
+	@$(GONEAT_BIN) version bump $(TYPE)
 	@echo "✅ Version bumped to $$(cat VERSION)"
 
 version-set:  ## Set version to specific value (usage: make version-set VERSION=x.y.z)
@@ -201,23 +201,23 @@ check-all: fmt lint test  ## Run all quality checks (ensures fmt, lint, test)
 	@echo "✅ All quality checks passed"
 
 precommit:  ## Run pre-commit hooks
-	@if ! command -v goneat >/dev/null 2>&1; then \
+	@if [ -z "$(GONEAT_BIN)" ]; then \
 		echo "❌ goneat not found. Run 'make bootstrap' first."; \
 		exit 1; \
 	fi
 	@echo "Running pre-commit validation..."
-	@goneat format
-	@goneat assess --check --categories format,lint --fail-on critical
+	@$(GONEAT_BIN) format
+	@$(GONEAT_BIN) assess --check --categories format,lint --fail-on critical
 	@echo "✅ Pre-commit checks passed"
 
 prepush:  ## Run pre-push hooks
-	@if ! command -v goneat >/dev/null 2>&1; then \
+	@if [ -z "$(GONEAT_BIN)" ]; then \
 		echo "❌ goneat not found. Run 'make bootstrap' first."; \
 		exit 1; \
 	fi
 	@echo "Running pre-push validation..."
-	@goneat format
-	@goneat assess --check --categories format,lint,security --fail-on high
+	@$(GONEAT_BIN) format
+	@$(GONEAT_BIN) assess --check --categories format,lint,security --fail-on high
 	@echo "✅ Pre-push checks passed"
 
 clean:  ## Clean build artifacts and reports

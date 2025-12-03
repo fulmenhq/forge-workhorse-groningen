@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. Older entries are archived under `docs/releases/` once we ship tagged versions.
 
+## [Unreleased]
+
+### Added
+
+- **Git Attributes**: Created `.gitattributes` file to enforce LF line endings for all text files across platforms, preventing CRLF issues on Windows
+
+### Fixed
+
+- **Windows Platform Detection**: Updated `scripts/install-goneat.sh` to properly detect Windows/MINGW environments (`MINGW*`, `MSYS*`, `CYGWIN*`) and map to `windows` for goneat archive downloads
+- **Windows Archive Format**: goneat bootstrap now correctly downloads `.zip` archives for Windows instead of `.tar.gz`, and extracts using `unzip`
+- **Makefile Goneat Detection**: Fixed all Makefile targets (`tools`, `precommit`, `prepush`, `dependencies`, `version-bump`) to check local `./bin/goneat` first via `$(GONEAT_BIN)` variable instead of only checking system PATH
+- **Line Endings**: Normalized all text files to LF line endings via `.gitattributes` and git renormalization
+
+### Changed
+
+- **Bootstrap Script**: Updated goneat version v0.3.9 → v0.3.10 with Windows platform support and SHA256 checksums (set to PENDING for new platforms)
+
+### Improved
+
+- **Cross-Platform Compatibility**: Verified Windows support with successful bootstrap and test suite execution on MINGW64_NT-10.0-26200
+
 ## [0.1.3] - 2025-12-01
 
 ### Changed
