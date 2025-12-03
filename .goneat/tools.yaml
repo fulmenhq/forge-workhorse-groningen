@@ -98,8 +98,9 @@ tools:
         - bun
         - mise
       linux:
-        - brew
+        - apt
         - bun
+        - brew
         - mise
       windows:
         - bun
@@ -116,17 +117,18 @@ tools:
       - windows
     installer_priority:
       darwin:
+        - mise
         - brew
         - bun
-        - mise
       linux:
+        - mise
         - brew
         - bun
-        - mise
+        - apt
       windows:
-        - bun
-        - scoop
         - winget
+        - scoop
+        - bun
   yamlfmt:
     name: yamlfmt
     description: YAML formatter and linter

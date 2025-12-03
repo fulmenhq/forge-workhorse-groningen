@@ -564,7 +564,7 @@ fi
 
 
 echo "Installing foundation tools via goneat doctor..."
-"${BIN_DIR}/goneat" doctor tools --scope foundation --install --yes --no-cooling
+"${BIN_DIR}/goneat" doctor tools --scope foundation --install --install-package-managers --yes --no-cooling
 
 
 
