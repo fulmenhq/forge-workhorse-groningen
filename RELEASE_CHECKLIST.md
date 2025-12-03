@@ -72,6 +72,15 @@ Standard checklist for forge-workhorse-groningen releases to ensure consistency 
 
 ## Release Execution
 
+### Signing (manual, template-friendly)
+
+- [ ] Build artifacts and checksums (`make release-build`)
+- [ ] Sign artifacts with your GPG key:
+  - [ ] `SIGNING_KEY_ID=<your-key> ./scripts/sign-release-artifacts.sh bin`
+  - [ ] Ensure `.asc` signatures exist alongside artifacts and SHA256SUMS
+  - [ ] Export public key at `dist/signing/public-key.asc` and attach with release
+- [ ] CDRL note: downstream users must replace Fulmen signatures with their own keys after refit
+
 ### Tagging
 
 - [ ] Create annotated git tag: `git tag -a v<version> -m "Release v<version>"`

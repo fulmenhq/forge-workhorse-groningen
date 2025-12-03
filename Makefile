@@ -1,4 +1,4 @@
-.PHONY: help bootstrap bootstrap-force tools sync dependencies verify-dependencies version-bump lint test build build-all clean fmt version check-all precommit prepush run install test-cov
+.PHONY: help bootstrap bootstrap-force hooks-ensure tools sync dependencies verify-dependencies version-bump lint test build build-all clean fmt version check-all precommit prepush run install test-cov
 .PHONY: version-set version-bump-major version-bump-minor version-bump-patch release-check release-prepare release-build
 
 # Binary and version information
@@ -68,10 +68,17 @@ bootstrap:  ## Install external tools (goneat) and dependencies
 	@echo "→ Downloading Go module dependencies..."
 	@go mod download
 	@go mod tidy
+	@$(MAKE) hooks-ensure
 	@echo "✅ Bootstrap completed. Use 'goneat' or add $$GOPATH/bin to PATH"
 
 bootstrap-force:  ## Force reinstall external tools
 	@$(MAKE) bootstrap FORCE=1
+
+hooks-ensure:  ## Ensure git hooks are installed (idempotent)
+	@if [ -d ".git" ] && [ -n "$(GONEAT_BIN)" ] && [ ! -x ".git/hooks/pre-commit" ]; then \
+		echo "🔗 Installing git hooks with goneat..."; \
+		$(GONEAT_BIN) hooks install 2>/dev/null || true; \
+	fi
 
 tools:  ## Verify external tools are available
 	@echo "Verifying external tools..."

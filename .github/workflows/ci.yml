@@ -54,8 +54,6 @@ jobs:
 
 
 
-
-
             ~/go/pkg/mod
 
 
@@ -177,15 +175,11 @@ jobs:
 
 
 
-
-
             ${{ runner.os }}-go-
       - name: Bootstrap tools
         run: make bootstrap
       - name: Format (fail on diff)
         run: |2
-
-
 
 
 

@@ -263,6 +263,7 @@ yourapp serve --config ./config/custom.yaml
 3. **Test Customizations**: Run `make test` after major changes
 4. **Version Management**: Use semantic versioning in app identity
 5. **Security**: Never commit secrets or API keys
+6. **Release Signing**: Remove any Fulmen-provided signatures and sign your own release artifacts before distribution
 
 ## Support
 

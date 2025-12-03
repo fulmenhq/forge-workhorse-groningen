@@ -83,7 +83,7 @@ BIN_DIR="${ROOT_DIR}/bin"
 
 
 
-GONEAT_VERSION="v0.3.10"
+GONEAT_VERSION="v0.3.11"
 
 
 
@@ -214,75 +214,35 @@ case "${OS}-${ARCH}" in
 
 
   darwin-amd64)
-
-
-
-
-    EXPECTED_SHA="PENDING"
-
-
-
-
+    EXPECTED_SHA="e8237899102df8460c878cc5e90380ce9755940674af65404ae3e4aa72c7680f"
     ;;
 
 
 
 
   darwin-arm64)
-
-
-
-
-    EXPECTED_SHA="PENDING"
-
-
-
-
+    EXPECTED_SHA="1bc77736e1b89f8d7a6e6d2195b1088936cd2aaeee3917dbfec42673fead4000"
     ;;
 
 
 
 
   linux-amd64)
-
-
-
-
-    EXPECTED_SHA="PENDING"
-
-
-
-
+    EXPECTED_SHA="58b6bbdd1175e414cf349bfe99911587b270abc26b17b83386da534e0be39b93"
     ;;
 
 
 
 
   linux-arm64)
-
-
-
-
-    EXPECTED_SHA="PENDING"
-
-
-
-
+    EXPECTED_SHA="5258009465b0b39d3f2855002fc54c74b5ed7e4b8882b01d08ae8c16991939b8"
     ;;
 
 
 
 
   windows-amd64)
-
-
-
-
-    EXPECTED_SHA="PENDING"
-
-
-
-
+    EXPECTED_SHA="6ece2f3bfcf79ff9f7e89d5393288144bcb6c71b8108b079d13f9be598d87292"
     ;;
 
 
@@ -604,11 +564,7 @@ fi
 
 
 echo "Installing foundation tools via goneat doctor..."
-
-
-
-
-"${BIN_DIR}/goneat" doctor tools --scope foundation --install --yes
+"${BIN_DIR}/goneat" doctor tools --scope foundation --install --yes --no-cooling
 
 
 
