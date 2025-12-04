@@ -23,7 +23,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Bootstrap tools (goneat doctor handles package managers)
-        run: make bootstrap
+        run: |
+          make bootstrap
+          ./bin/goneat doctor tools env --github >> $GITHUB_PATH
       - name: Format (fail on diff)
         run: |
           make fmt
