@@ -170,11 +170,11 @@ tools:
       - windows
     installer_priority:
       darwin:
-        - npm
         - bun
+        - npm
       linux:
-        - npm
         - bun
+        - npm
       windows:
         - npm
         - winget
