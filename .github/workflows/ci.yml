@@ -30,6 +30,12 @@ jobs:
         run: |
           make fmt
           git diff --exit-code
+      - name: Install golangci-lint (v2)
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.4.0
+          # Don't run linting here - just install. We run via make lint below.
+          args: --help
       - name: Lint
         run: make lint
       - name: Test
