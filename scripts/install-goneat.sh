@@ -83,7 +83,7 @@ BIN_DIR="${ROOT_DIR}/bin"
 
 
 
-GONEAT_VERSION="v0.3.12"
+GONEAT_VERSION="v0.3.13"
 
 
 
@@ -214,35 +214,35 @@ case "${OS}-${ARCH}" in
 
 
   darwin-amd64)
-    EXPECTED_SHA="1ca7d7d5f413e448da54b71044a8ebbb3158a83f15e8a8fd13f68f95d211429d"
+    EXPECTED_SHA="e91933b280a1b700d429e9f05aee255805b0705bc568d1b69f40ec1b8bee0ff4"
     ;;
 
 
 
 
   darwin-arm64)
-    EXPECTED_SHA="0b6a1adac608a642c16ee776c05328834eb624934e18e2003c05a6d9a39d02cf"
+    EXPECTED_SHA="87c8ba5a3e2b8e184c1d99ab2fb7372e93309a282ae6930dbbef92edd3aba615"
     ;;
 
 
 
 
   linux-amd64)
-    EXPECTED_SHA="3bdf376f3afd5f0c44142a3367a02bf23cb24955be2de5467dd06302d39ca71a"
+    EXPECTED_SHA="ec88d94c29013acb858fbc02837b02d5d6a73d620772b9192732d87551d2c44d"
     ;;
 
 
 
 
   linux-arm64)
-    EXPECTED_SHA="2ed061322c3d2c79bc28d9f11dc11c4159d4ddd57064bd41c627ba2e3fa7fa93"
+    EXPECTED_SHA="52b5b593ade95b995562a9c995b4a85883cf2d9db3217b032aba68f6d77ef944"
     ;;
 
 
 
 
   windows-amd64)
-    EXPECTED_SHA="a7cdc450c7c71f5edbc00fc691c62585c1a2b4067572f45d0bbe59756e6a9b86"
+    EXPECTED_SHA="16fe04dfad46b75d5a834fcc327b8a4ebe289fcb857d1cf4984ac1a2be95ac77"
     ;;
 
 
