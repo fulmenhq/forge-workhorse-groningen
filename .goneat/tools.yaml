@@ -127,7 +127,7 @@ tools:
     description: Fast linters runner for Go
     kind: go
     detect_command: golangci-lint --version
-    install_package: github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+    install_package: github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
     version_args:
       - --version
     check_args:
@@ -136,7 +136,7 @@ tools:
       all:
         - go-install
     version_scheme: semver
-    minimum_version: 1.54.0
+    minimum_version: 2.0.0
     recommended_version: 2.4.0
   gosec:
     name: gosec
