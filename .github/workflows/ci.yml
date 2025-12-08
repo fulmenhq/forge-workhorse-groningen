@@ -4,7 +4,29 @@ on:
     branches: [main]
   pull_request:
 jobs:
+  # Container-based format checking (LOW friction - v0.3.14+)
+  format-check:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/fulmenhq/goneat-tools:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify foundation tools
+        run: |
+          prettier --version
+          yamlfmt --version
+          jq --version
+          yq --version
+          rg --version
+      - name: Check formatting
+        run: |
+          yamlfmt -lint .
+          prettier --check "**/*.{md,json}" || echo "Prettier differences found (non-blocking)"
+
+  # Build and test (depends on format-check passing)
   build-test:
+    needs: [format-check]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -13,20 +35,11 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
       - name: Bootstrap tools (goneat doctor handles package managers)
         run: |
           make bootstrap
           ./bin/goneat doctor tools env --github >> $GITHUB_PATH
-      - name: Format (fail on diff)
+      - name: Format Go code (fail on diff)
         run: |
           make fmt
           git diff --exit-code
