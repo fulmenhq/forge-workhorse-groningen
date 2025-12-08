@@ -23,7 +23,6 @@ jobs:
         run: |
           yamlfmt -lint .
           prettier --check "**/*.{md,json}" || echo "Prettier differences found (non-blocking)"
-
   # Build and test (depends on format-check passing)
   build-test:
     needs: [format-check]
