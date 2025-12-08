@@ -23,10 +23,12 @@ jobs:
         run: |
           yamlfmt -lint .
           prettier --check "**/*.{md,json}" || echo "Prettier differences found (non-blocking)"
-  # Build and test (depends on format-check passing)
+  # Build and test using goneat-tools container (LOW friction - all tools available)
   build-test:
     needs: [format-check]
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/fulmenhq/goneat-tools:latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,11 +36,18 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
-      - name: Bootstrap tools (goneat doctor handles package managers)
+      - name: Install goneat binary
         run: |
-          make bootstrap
-          ./bin/goneat doctor tools env --github >> $GITHUB_PATH
-      - name: Format Go code (fail on diff)
+          ./scripts/install-goneat.sh
+          go mod download
+      - name: Verify foundation tools available
+        run: |
+          echo "=== Foundation tools from container ==="
+          prettier --version
+          yamlfmt --version
+          echo "=== Goneat installed ==="
+          ./bin/goneat --version
+      - name: Format (using goneat - fail on diff)
         run: |
           make fmt
           git diff --exit-code
@@ -46,9 +55,10 @@ jobs:
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.4.0
-          # Don't run linting here - just install. We run via make lint below.
           args: --help
       - name: Lint
         run: make lint
       - name: Test
         run: make test
+      - name: Build binary
+        run: make build
