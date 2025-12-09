@@ -388,7 +388,12 @@ if [[ "${NEED_DOWNLOAD}" == "true" ]]; then
 
 
 
-    ACTUAL_SHA="$(shasum -a 256 "${tmpfile}" | cut -d' ' -f1)"
+    # Use sha256sum on Linux, shasum on macOS
+    if command -v sha256sum >/dev/null 2>&1; then
+      ACTUAL_SHA="$(sha256sum "${tmpfile}" | cut -d' ' -f1)"
+    else
+      ACTUAL_SHA="$(shasum -a 256 "${tmpfile}" | cut -d' ' -f1)"
+    fi
 
 
 
