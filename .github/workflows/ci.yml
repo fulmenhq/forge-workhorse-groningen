@@ -5,10 +5,14 @@ on:
   pull_request:
 jobs:
   # Container-based format checking (LOW friction - v0.3.14+)
+  # Uses goneat-tools container which has all foundation tools pre-installed
   format-check:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/fulmenhq/goneat-tools:latest
+      # REQUIRED: actions/checkout@v4 needs write access to /__w/_temp/_runner_file_commands/
+      # See: docs/development/ci.md for details on container permissions
+      options: --user root
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,11 +28,15 @@ jobs:
           yamlfmt -lint .
           prettier --check "**/*.{md,json}" || echo "Prettier differences found (non-blocking)"
   # Build and test using goneat-tools container (LOW friction - all tools available)
+  # Container provides foundation tools; we install goneat binary separately
   build-test:
     needs: [format-check]
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/fulmenhq/goneat-tools:latest
+      # REQUIRED: actions/checkout@v4 needs write access to /__w/_temp/_runner_file_commands/
+      # See: docs/development/ci.md for details on container permissions
+      options: --user root
     steps:
       - name: Checkout
         uses: actions/checkout@v4
