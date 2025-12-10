@@ -43,6 +43,36 @@ Error: EACCES: permission denied, open '/__w/_temp/_runner_file_commands/save_st
 
 No. The container is ephemeral and isolated to this CI job. Running as root inside the container does not grant elevated permissions on the GitHub runner host. This is standard practice for GitHub Actions container jobs.
 
+### Runner Temp Permissions
+
+Recent hardening of `ghcr.io/fulmenhq/goneat-tools` runs the image as a non-root user by default. Even with `options: --user root`, GitHub Actions initializes the `_runner_file_commands` directory before steps execute, which can leave `/__w/_temp` owned by a different uid/gid. To avoid `EACCES` failures when saving state, add a step immediately after checkout that relaxes permissions on that directory:
+
+```yaml
+- name: Fix temp permissions
+  run: |
+    set -euo pipefail
+    sudo install -d -m 0777 /__w/_temp || true
+    sudo install -d -m 0777 /__w/_temp/_runner_file_commands || true
+    sudo chown -R $(id -u):$(id -g) /__w/_temp || true
+    sudo chmod -R 777 /__w/_temp || true
+```
+
+This step is idempotent and safe to run in every container job. Keep it before any step that writes workflow state (e.g., `actions/cache`, `save-state`, `set-output`).
+
+### Additional Hardening Patterns
+
+#### Minimize `GITHUB_TOKEN` capabilities
+
+Explicitly declare the workflow `permissions` block (for this template: `contents: read`) so the implicit token cannot mutate repository state even if a step is compromised. This keeps the example aligned with GitHub's least-privilege guidance.
+
+#### Avoid persisting checkout credentials
+
+Pass `persist-credentials: false` to `actions/checkout@v4`. CI jobs in this template never push, so there's no reason to store the short-lived token inside `.git/config`. Downstream users can override when they need to push tags or release artifacts.
+
+#### Enforce strict shell options in scripts
+
+Add `set -euo pipefail` at the top of every multi-line `run` script. This catches unset variables, stops on the first failing command, and prevents silent formatting or build failures inside the container.
+
 ### CI Jobs
 
 1. **format-check**: Validates formatting using container tools (yamlfmt, prettier)
