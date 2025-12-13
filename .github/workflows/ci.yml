@@ -1,3 +1,5 @@
+# yamllint disable rule:document-start
+# yamllint disable rule:truthy
 name: CI
 on:
   push:
@@ -5,30 +7,22 @@ on:
   pull_request:
 permissions:
   contents: read
-
 jobs:
   # Container-based format checking (LOW friction - v0.3.14+)
   # Uses goneat-tools container which has all foundation tools pre-installed
   format-check:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/fulmenhq/goneat-tools:latest
-      # REQUIRED: actions/checkout@v4 needs write access to /__w/_temp/_runner_file_commands/
-      # See: docs/development/ci.md for details on container permissions
-      options: --user root
+      image: ghcr.io/fulmenhq/goneat-tools:v0.1.5
+      # goneat-tools runs as a non-root user by default.
+      # Use UID 1001 to match GitHub-hosted runner workspace ownership.
+      options: --user 1001
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Fix temp permissions
-        run: |
-          set -euo pipefail
-          sudo install -d -m 0777 /__w/_temp || true
-          sudo install -d -m 0777 /__w/_temp/_runner_file_commands || true
-          sudo chown -R $(id -u):$(id -g) /__w/_temp || true
-          sudo chmod -R 777 /__w/_temp || true
       - name: Verify foundation tools
         run: |
           set -euo pipefail
@@ -41,39 +35,46 @@ jobs:
         run: |
           set -euo pipefail
           yamlfmt -lint .
-          prettier --check "**/*.{md,json}" || echo "Prettier differences found (non-blocking)"
-
-  # Build and test using goneat-tools container (LOW friction - all tools available)
+          prettier --check "**/*.{md,json}" || \
+            echo "Prettier differences found (non-blocking)"
+  # Build and test using goneat-tools container
+  # Container provides foundation tools; we install goneat separately
   # Container provides foundation tools; we install goneat binary separately
   build-test:
     needs: [format-check]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/fulmenhq/goneat-tools:latest
-      # REQUIRED: actions/checkout@v4 needs write access to /__w/_temp/_runner_file_commands/
-      # See: docs/development/ci.md for details on container permissions
-      options: --user root
+      image: ghcr.io/fulmenhq/goneat-tools:v0.1.5
+      # goneat-tools runs as a non-root user by default.
+      # Use UID 1001 to match GitHub-hosted runner workspace ownership.
+      options: --user 1001
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Fix temp permissions
-        run: |
-          set -euo pipefail
-          sudo install -d -m 0777 /__w/_temp || true
-          sudo install -d -m 0777 /__w/_temp/_runner_file_commands || true
-          sudo chown -R $(id -u):$(id -g) /__w/_temp || true
-          sudo chmod -R 777 /__w/_temp || true
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
-      - name: Install goneat binary
+      - name: Install sfetch + goneat
         run: |
           set -euo pipefail
-          ./scripts/install-goneat.sh
+          BIN_DIR="$HOME/.local/bin"
+          mkdir -p "$BIN_DIR"
+          SFETCH_INSTALL_URL="https://github.com/3leaps/sfetch/releases/latest/download/"
+          SFETCH_INSTALL_URL="${SFETCH_INSTALL_URL}install-sfetch.sh"
+          curl -sSfL "$SFETCH_INSTALL_URL" | bash -s -- --yes --dir "$BIN_DIR"
+          export PATH="$BIN_DIR:$PATH"
+          sfetch --self-verify
+          sfetch --repo fulmenhq/goneat --tag v0.3.16 \
+            --dest-dir "$BIN_DIR"
+          if [ -f "$BIN_DIR/goneat.exe" ] && \
+            [ ! -f "$BIN_DIR/goneat" ]; then
+            mv "$BIN_DIR/goneat.exe" "$BIN_DIR/goneat"
+          fi
+          goneat --version
           go mod download
       - name: Verify foundation tools available
         run: |
@@ -82,7 +83,7 @@ jobs:
           prettier --version
           yamlfmt --version
           echo "=== Goneat installed ==="
-          ./bin/goneat --version
+          goneat --version
       - name: Format (using goneat - fail on diff)
         run: |
           set -euo pipefail

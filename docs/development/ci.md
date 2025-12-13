@@ -4,7 +4,7 @@ This document explains the CI/CD setup for this repository.
 
 ## Container-Based CI Pattern
 
-This repository uses the **goneat-tools container** (`ghcr.io/fulmenhq/goneat-tools:latest`) for CI jobs. This is the recommended "low friction" approach from goneat v0.3.14+.
+This repository uses the **goneat-tools container** (`ghcr.io/fulmenhq/goneat-tools:v0.1.5`) for CI jobs. This is the recommended "low friction" approach from goneat v0.3.14+.
 
 ### Why Containers?
 
@@ -18,46 +18,21 @@ The container provides all foundation tools pre-installed:
 
 This eliminates tool installation friction in CI - no package manager setup, no version conflicts, no install failures.
 
-### Container Permissions (`--user root`)
+### Container Permissions (`--user 1001`)
 
-**IMPORTANT**: Do not remove the `options: --user root` from container configurations.
+This template uses `options: --user 1001` for `goneat-tools` container jobs.
 
 ```yaml
 container:
-  image: ghcr.io/fulmenhq/goneat-tools:latest
-  # REQUIRED: actions/checkout@v4 needs write access to /__w/_temp/_runner_file_commands/
-  options: --user root
+  image: ghcr.io/fulmenhq/goneat-tools:v0.1.5
+  options: --user 1001
 ```
 
-#### Why is this required?
+#### Why 1001?
 
-GitHub Actions' `actions/checkout@v4` writes state files to the runner's temp directory at `/__w/_temp/_runner_file_commands/`. When running inside a container, the default user may not have write permissions to this directory.
+GitHub Actions mounts the workspace and temp directories into the container under `/__w`. Using UID 1001 aligns with GitHub-hosted runner workspace ownership and avoids `EACCES` errors when actions write state files (e.g. checkout).
 
-Without `--user root`, you'll see errors like:
-
-```
-Error: EACCES: permission denied, open '/__w/_temp/_runner_file_commands/save_state_...'
-```
-
-#### Is this a security concern?
-
-No. The container is ephemeral and isolated to this CI job. Running as root inside the container does not grant elevated permissions on the GitHub runner host. This is standard practice for GitHub Actions container jobs.
-
-### Runner Temp Permissions
-
-Recent hardening of `ghcr.io/fulmenhq/goneat-tools` runs the image as a non-root user by default. Even with `options: --user root`, GitHub Actions initializes the `_runner_file_commands` directory before steps execute, which can leave `/__w/_temp` owned by a different uid/gid. To avoid `EACCES` failures when saving state, add a step immediately after checkout that relaxes permissions on that directory:
-
-```yaml
-- name: Fix temp permissions
-  run: |
-    set -euo pipefail
-    sudo install -d -m 0777 /__w/_temp || true
-    sudo install -d -m 0777 /__w/_temp/_runner_file_commands || true
-    sudo chown -R $(id -u):$(id -g) /__w/_temp || true
-    sudo chmod -R 777 /__w/_temp || true
-```
-
-This step is idempotent and safe to run in every container job. Keep it before any step that writes workflow state (e.g., `actions/cache`, `save-state`, `set-output`).
+If your org uses self-hosted runners with different ownership, adjust the UID accordingly.
 
 ### Additional Hardening Patterns
 
@@ -83,15 +58,27 @@ Add `set -euo pipefail` at the top of every multi-line `run` script. This catche
 For local development, you have two options:
 
 1. **Use the container** (recommended for consistency):
+
    ```bash
    docker run --rm -v "$(pwd)":/work -w /work --entrypoint "" \
-     ghcr.io/fulmenhq/goneat-tools:latest yamlfmt -lint .
+     ghcr.io/fulmenhq/goneat-tools:v0.1.5 yamlfmt -lint .
    ```
 
-2. **Install tools via goneat**:
+2. **Install tools via sfetch + goneat**:
+
    ```bash
-   ./scripts/install-goneat.sh
-   ./bin/goneat doctor tools --scope foundation --install
+   # Install the trust anchor (sfetch)
+   curl -sSfL https://github.com/3leaps/sfetch/releases/latest/download/install-sfetch.sh | bash -s -- --yes --dir "$HOME/.local/bin"
+   export PATH="$HOME/.local/bin:$PATH"
+
+   # Verify sfetch install (trust anchor)
+   sfetch --self-verify
+
+   # Install goneat via sfetch
+   sfetch --repo fulmenhq/goneat --tag v0.3.16 --dest-dir "$HOME/.local/bin"
+
+   # Install foundation tools via goneat
+   goneat doctor tools --scope foundation --install --install-package-managers --yes
    ```
 
 ## References

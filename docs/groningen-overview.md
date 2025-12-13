@@ -228,8 +228,12 @@ All application surfaces automatically adapt to your identity:
 ### Local Development
 
 ```bash
-# Bootstrap development tools
+# Bootstrap tools via sfetch (trust anchor) + goneat
 make bootstrap
+
+# Install/refresh git hooks (manifest-driven)
+# (bootstrap also runs hooks-ensure)
+goneat hooks install
 
 # Run tests
 make test
@@ -387,10 +391,10 @@ customHistogram := telemetry.Histogram("custom_duration_seconds")
 
 ### Documentation
 
-- [README.md](../../README.md) - Project overview and quick start
-- [DEVELOPMENT.md](../../DEVELOPMENT.md) - Development handbook and workflows
-- [CDRL Guide](fulmen_cdrl_guide.md) - Template customization guide
-- [Accessing Crucible Docs](accessing-crucible-docs-via-gofulmen.md) - Embedded documentation access
+- [README.md](../README.md) - Project overview and quick start
+- [Development Handbook](development/README.md) - Development setup and workflows
+- [CDRL Guide](development/fulmen_cdrl_guide.md) - Template customization guide
+- [Accessing Crucible Docs](development/accessing-crucible-docs-via-gofulmen.md) - Embedded documentation access
 
 ### Standards & Specifications
 
@@ -407,9 +411,10 @@ customHistogram := telemetry.Histogram("custom_duration_seconds")
 
 ## Version Information
 
-- **Current Version**: 0.1.2
-- **Gofulmen Version**: 0.1.15
-- **Crucible Version**: 0.2.16
+- **Current Version**: 0.1.3
+- **Gofulmen Version**: 0.1.20
+- **Crucible Version**: 0.2.20
+- **goneat Version**: 0.3.16
 - **Go Version**: 1.25.1+
 - **License**: MIT
 

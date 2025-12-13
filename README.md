@@ -40,6 +40,7 @@ git clone https://github.com/fulmenhq/forge-workhorse-groningen.git my-app
 cd my-app
 
 # Install dependencies
+# - Requires 'sfetch' (trust anchor); bootstrap prints install instructions if missing
 make bootstrap
 
 # Run server
@@ -86,9 +87,12 @@ forge-workhorse-groningen/
 │       └── v1.0.0/
 │           └── config.schema.json       # Config validation schema
 ├── docs/
-│   ├── README.md
-│   ├── DEVELOPMENT.md
-│   └── development/
+│   ├── groningen-overview.md     # Template architecture and components
+│   ├── metrics.md                # Telemetry/metrics notes
+│   ├── releases/                 # Release notes by version
+│   └── development/              # Development guides
+│       ├── README.md             # Development handbook and workflows
+│       ├── ci.md                 # CI/CD details
 │       └── fulmen_cdrl_guide.md  # How to refit this template
 ├── .env.example                # Standard env vars (copy to .env)
 ├── Makefile                    # Development targets
@@ -97,8 +101,9 @@ forge-workhorse-groningen/
 
 ### Dependencies
 
-- **gofulmen v0.1.15** - Fulmen helper library (config, logging, telemetry, schema validation, pathfinder)
-- **goneat v0.3.2** - Optional DX tooling
+- **gofulmen v0.1.20** - Fulmen helper library (config, logging, telemetry, schema validation, pathfinder)
+- **goneat v0.3.16** - Tooling for formatting, hooks, and assessment
+- **sfetch** - Trust anchor for bootstrapping tools
 - **cobra** - CLI framework (Fulmen standard for Go)
 - **chi** - HTTP router (lightweight, idiomatic)
 
@@ -495,8 +500,8 @@ See [MAINTAINERS.md](MAINTAINERS.md) for governance and project team information
 
 ### Documentation
 
-- [Template Overview](docs/development/groningen-overview.md) - Comprehensive guide to template architecture and components
-- [Developer Handbook](docs/DEVELOPMENT.md) - Development setup and workflows
+- [Template Overview](docs/groningen-overview.md) - Comprehensive guide to template architecture and components
+- [Developer Handbook](docs/development/README.md) - Development setup and workflows
 - [Development Guides](docs/development/) - Focused guides for specific topics
 
 ### Standards Applied

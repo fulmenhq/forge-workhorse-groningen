@@ -1,4 +1,4 @@
-.PHONY: help bootstrap bootstrap-force hooks-ensure tools sync dependencies verify-dependencies version-bump lint test build build-all clean fmt version check-all precommit prepush run install test-cov
+.PHONY: all help bootstrap bootstrap-force hooks-ensure tools sync dependencies verify-dependencies version-bump lint test build build-all clean fmt version check-all precommit prepush run install test-cov
 .PHONY: version-set version-bump-major version-bump-minor version-bump-patch release-check release-prepare release-build
 
 # Binary and version information
@@ -14,80 +14,83 @@ GOTEST := $(GOCMD) test
 GOFMT := $(GOCMD) fmt
 GOMOD := $(GOCMD) mod
 
+# Tool installation (user-space bin dir; overridable with BINDIR=...)
+#
+# Defaults:
+# - macOS/Linux: $HOME/.local/bin
+# - Windows (Git Bash / MSYS / MINGW / Cygwin): %USERPROFILE%\\bin (or $HOME/bin)
+BINDIR ?=
+BINDIR_RESOLVE = \
+	BINDIR="$(BINDIR)"; \
+	if [ -z "$$BINDIR" ]; then \
+		OS_RAW="$$(uname -s 2>/dev/null || echo unknown)"; \
+		case "$$OS_RAW" in \
+			MINGW*|MSYS*|CYGWIN*) \
+				if [ -n "$$USERPROFILE" ]; then \
+					if command -v cygpath >/dev/null 2>&1; then \
+						BINDIR="$$(cygpath -u "$$USERPROFILE")/bin"; \
+					else \
+						BINDIR="$$USERPROFILE/bin"; \
+					fi; \
+				elif [ -n "$$HOME" ]; then \
+					BINDIR="$$HOME/bin"; \
+				else \
+					BINDIR="./bin"; \
+				fi ;; \
+			*) \
+				if [ -n "$$HOME" ]; then \
+					BINDIR="$$HOME/.local/bin"; \
+				else \
+					BINDIR="./bin"; \
+				fi ;; \
+		esac; \
+	fi
+
 # Tooling
-GONEAT_VERSION := v0.3.8
-GONEAT_BIN := $(firstword $(wildcard ./bin/goneat) $(shell command -v goneat 2>/dev/null))
+GONEAT_VERSION := v0.3.16
+
+SFETCH_RESOLVE = \
+	$(BINDIR_RESOLVE); \
+	SFETCH=""; \
+	if [ -x "$$BINDIR/sfetch" ]; then SFETCH="$$BINDIR/sfetch"; fi; \
+	if [ -z "$$SFETCH" ]; then SFETCH="$$(command -v sfetch 2>/dev/null || true)"; fi
+
+GONEAT_RESOLVE = \
+	$(BINDIR_RESOLVE); \
+	GONEAT=""; \
+	if [ -x "$$BINDIR/goneat" ]; then GONEAT="$$BINDIR/goneat"; fi; \
+	if [ -z "$$GONEAT" ]; then GONEAT="$$(command -v goneat 2>/dev/null || true)"; fi; \
+	if [ -z "$$GONEAT" ]; then echo "❌ goneat not found. Run 'make bootstrap' first."; exit 1; fi
 
 # Default target
 all: fmt test
 
 help:  ## Show this help message
-	@echo 'Groningen - Available Make Targets'
-	@echo ''
-	@echo 'Required targets (Makefile Standard):'
-	@echo '  help            - Show this help message'
-	@echo '  bootstrap       - Install external tools (goneat) and dependencies'
-	@echo '  bootstrap-force - Force reinstall external tools'
-	@echo '  tools           - Verify external tools are available'
-	@echo '  dependencies    - Generate SBOM for supply-chain security'
-	@echo '  lint            - Run lint/format/style checks'
-	@echo '  test            - Run all tests'
-	@echo '  build           - Build distributable artifacts'
-	@echo '  build-all       - Build multi-platform binaries'
-	@echo '  clean           - Remove build artifacts and caches'
-	@echo '  fmt             - Format code'
-	@echo '  version         - Print current version'
-	@echo '  version-set     - Set version to specific value'
-	@echo '  version-bump-major - Bump major version'
-	@echo '  version-bump-minor - Bump minor version'
-	@echo '  version-bump-patch - Bump patch version'
-	@echo '  release-check   - Run release checklist validation'
-	@echo '  release-prepare - Prepare for release'
-	@echo '  release-build   - Build release artifacts'
-	@echo '  check-all       - Run all quality checks (fmt, lint, test)'
-	@echo '  precommit       - Run pre-commit hooks (check-all)'
-	@echo '  prepush         - Run pre-push hooks (check-all)'
-	@echo ''
-	@echo 'Additional targets:'
-	@echo '  run             - Run server in development mode'
-	@echo '  test-cov        - Run tests with coverage report'
-	@echo ''
+	@printf '%s\n' 'Groningen - Available Make Targets' '' 'Required targets (Makefile Standard):' '  help            - Show this help message' '  bootstrap       - Install external tools (sfetch, goneat) and dependencies' '  bootstrap-force - Force reinstall external tools' '  tools           - Verify external tools are available' '  dependencies    - Generate SBOM for supply-chain security' '  lint            - Run lint/format/style checks' '  test            - Run all tests' '  build           - Build distributable artifacts' '  build-all       - Build multi-platform binaries' '  clean           - Remove build artifacts and caches' '  fmt             - Format code' '  version         - Print current version' '  version-set     - Set version to specific value' '  version-bump-major - Bump major version' '  version-bump-minor - Bump minor version' '  version-bump-patch - Bump patch version' '  release-check   - Run release checklist validation' '  release-prepare - Prepare for release' '  release-build   - Build release artifacts' '  check-all       - Run all quality checks (fmt, lint, test)' '  precommit       - Run pre-commit hooks (check-all)' '  prepush         - Run pre-push hooks (check-all)' '' 'Additional targets:' '  run             - Run server in development mode' '  test-cov        - Run tests with coverage report' ''
 
-bootstrap:  ## Install external tools (goneat) and dependencies
+bootstrap:  ## Install external tools (sfetch, goneat) and dependencies
 	@echo "Installing external tools..."
-	@if [ "$(FORCE)" = "1" ] || [ "$(FORCE)" = "true" ]; then \
-		rm -f ./bin/goneat; \
-	fi
-	@if [ ! -x "./bin/goneat" ]; then \
-		echo "→ Downloading goneat $(GONEAT_VERSION) and required formatters to ./bin"; \
-		./scripts/install-goneat.sh; \
-	else \
-		echo "→ goneat already available at ./bin/goneat (bootstrap will ensure formatters)"; \
-		./scripts/install-goneat.sh; \
-	fi
-	@echo "→ Downloading Go module dependencies..."
-	@go mod download
-	@go mod tidy
-	@$(MAKE) hooks-ensure
-	@echo "✅ Bootstrap completed. Use 'goneat' or add $$GOPATH/bin to PATH"
+	@$(SFETCH_RESOLVE); if [ -z "$$SFETCH" ]; then echo "❌ sfetch not found (required trust anchor)."; echo ""; echo "Install sfetch, verify it, then re-run bootstrap:"; echo "  curl -sSfL https://github.com/3leaps/sfetch/releases/latest/download/install-sfetch.sh | bash"; echo "  sfetch --self-verify"; echo ""; exit 1; fi
+	@$(BINDIR_RESOLVE); mkdir -p "$$BINDIR"; echo "→ sfetch self-verify (trust anchor):"; $(SFETCH_RESOLVE); $$SFETCH --self-verify
+	@$(BINDIR_RESOLVE); if [ "$(FORCE)" = "1" ] || [ "$(FORCE)" = "true" ]; then rm -f "$$BINDIR/goneat" "$$BINDIR/goneat.exe"; fi; echo "→ Installing goneat $(GONEAT_VERSION) to user bin dir..."; $(SFETCH_RESOLVE); $(BINDIR_RESOLVE); $$SFETCH --repo fulmenhq/goneat --tag $(GONEAT_VERSION) --dest-dir "$$BINDIR"; OS_RAW="$$(uname -s 2>/dev/null || echo unknown)"; case "$$OS_RAW" in MINGW*|MSYS*|CYGWIN*) if [ -f "$$BINDIR/goneat.exe" ] && [ ! -f "$$BINDIR/goneat" ]; then mv "$$BINDIR/goneat.exe" "$$BINDIR/goneat"; fi ;; esac; $(GONEAT_RESOLVE); echo "→ goneat: $$($$GONEAT --version 2>&1 | head -n1 || true)"; echo "→ Installing foundation tools via goneat doctor..."; $$GONEAT doctor tools --scope foundation --install --install-package-managers --yes --no-cooling
+	@echo "→ Downloading Go module dependencies..."; go mod download; go mod tidy; $(MAKE) hooks-ensure; $(BINDIR_RESOLVE); echo "✅ Bootstrap completed. Ensure $$BINDIR is on PATH"
 
 bootstrap-force:  ## Force reinstall external tools
 	@$(MAKE) bootstrap FORCE=1
 
 hooks-ensure:  ## Ensure git hooks are installed (idempotent)
-	@if [ -d ".git" ] && [ -n "$(GONEAT_BIN)" ] && [ ! -x ".git/hooks/pre-commit" ]; then \
+	@$(BINDIR_RESOLVE); \
+	GONEAT=""; \
+	if [ -x "$$BINDIR/goneat" ]; then GONEAT="$$BINDIR/goneat"; fi; \
+	if [ -z "$$GONEAT" ]; then GONEAT="$$(command -v goneat 2>/dev/null || true)"; fi; \
+	if [ -d ".git" ] && [ -n "$$GONEAT" ] && [ ! -x ".git/hooks/pre-commit" ]; then \
 		echo "🔗 Installing git hooks with goneat..."; \
-		$(GONEAT_BIN) hooks install 2>/dev/null || true; \
+		$$GONEAT hooks install 2>/dev/null || true; \
 	fi
 
 tools:  ## Verify external tools are available
 	@echo "Verifying external tools..."
-	@if [ -n "$(GONEAT_BIN)" ]; then \
-		echo "✅ goneat: $$($(GONEAT_BIN) --version 2>&1 | head -n1)"; \
-	else \
-		echo "❌ goneat not found. Run 'make bootstrap' first."; \
-		exit 1; \
-	fi
+	@$(GONEAT_RESOLVE); echo "✅ goneat: $$($$GONEAT --version 2>&1 | head -n1)"
 	@echo "✅ All tools verified"
 
 sync:  ## Sync assets from Crucible SSOT (placeholder)
@@ -95,12 +98,7 @@ sync:  ## Sync assets from Crucible SSOT (placeholder)
 	@echo "✅ Sync target satisfied (no-op)"
 
 dependencies:  ## Generate SBOM for supply-chain security
-	@if [ -z "$(GONEAT_BIN)" ]; then \
-		echo "❌ goneat not found. Run 'make bootstrap' first."; \
-		exit 1; \
-	fi
-	@echo "Generating Software Bill of Materials (SBOM)..."
-	@$(GONEAT_BIN) dependencies --sbom --sbom-output sbom/groningen.cdx.json
+	@echo "Generating Software Bill of Materials (SBOM)..."; $(GONEAT_RESOLVE); $$GONEAT dependencies --sbom --sbom-output sbom/groningen.cdx.json
 	@echo "✅ SBOM generated at sbom/groningen.cdx.json"
 
 verify-dependencies:  ## Alias for dependencies (compatibility)
@@ -113,16 +111,11 @@ run:  ## Run server in development mode
 	@go run ./cmd/$(BINARY_NAME) serve --verbose
 
 version-bump:  ## Bump version (usage: make version-bump TYPE=patch|minor|major|calver)
-	@if [ -z "$(GONEAT_BIN)" ]; then \
-		echo "❌ goneat not found. Run 'make bootstrap' first."; \
-		exit 1; \
-	fi
 	@if [ -z "$(TYPE)" ]; then \
 		echo "❌ TYPE not specified. Usage: make version-bump TYPE=patch|minor|major|calver"; \
 		exit 1; \
 	fi
-	@echo "Bumping version ($(TYPE))..."
-	@$(GONEAT_BIN) version bump $(TYPE)
+	@echo "Bumping version ($(TYPE))..."; $(GONEAT_RESOLVE); $$GONEAT version bump $(TYPE)
 	@echo "✅ Version bumped to $$(cat VERSION)"
 
 version-set:  ## Set version to specific value (usage: make version-set VERSION=x.y.z)
@@ -185,46 +178,24 @@ test-cov:  ## Run tests with coverage
 	@echo "✓ Coverage report: coverage.html"
 
 lint:  ## Run lint checks
-	@if [ -z "$(GONEAT_BIN)" ]; then \
-		echo "❌ goneat not found. Run 'make bootstrap' first."; \
-		exit 1; \
-	fi
 	@echo "Running Go vet..."
 	@$(GOCMD) vet ./...
-	@echo "Running goneat assess..."
-	@$(GONEAT_BIN) assess --categories lint
+	@echo "Running goneat assess..."; $(GONEAT_RESOLVE); $$GONEAT assess --categories lint
 	@echo "✅ Lint checks passed"
 
 fmt:  ## Format code with goneat
-	@if [ -z "$(GONEAT_BIN)" ]; then \
-		echo "❌ goneat not found. Run 'make bootstrap' first."; \
-		exit 1; \
-	fi
-	@echo "Formatting with goneat..."
-	@$(GONEAT_BIN) format
+	@echo "Formatting with goneat..."; $(GONEAT_RESOLVE); $$GONEAT format
 	@echo "✅ Formatting completed"
 
 check-all: fmt lint test  ## Run all quality checks (ensures fmt, lint, test)
 	@echo "✅ All quality checks passed"
 
 precommit:  ## Run pre-commit hooks
-	@if [ -z "$(GONEAT_BIN)" ]; then \
-		echo "❌ goneat not found. Run 'make bootstrap' first."; \
-		exit 1; \
-	fi
-	@echo "Running pre-commit validation..."
-	@$(GONEAT_BIN) format
-	@$(GONEAT_BIN) assess --check --categories format,lint --fail-on critical
+	@echo "Running pre-commit validation..."; $(GONEAT_RESOLVE); $$GONEAT format; $$GONEAT assess --check --categories format,lint --fail-on critical
 	@echo "✅ Pre-commit checks passed"
 
 prepush:  ## Run pre-push hooks
-	@if [ -z "$(GONEAT_BIN)" ]; then \
-		echo "❌ goneat not found. Run 'make bootstrap' first."; \
-		exit 1; \
-	fi
-	@echo "Running pre-push validation..."
-	@$(GONEAT_BIN) format
-	@$(GONEAT_BIN) assess --check --categories format,lint,security --fail-on high
+	@echo "Running pre-push validation..."; $(GONEAT_RESOLVE); $$GONEAT format; $$GONEAT assess --check --categories format,lint,security --fail-on high
 	@echo "✅ Pre-push checks passed"
 
 clean:  ## Clean build artifacts and reports

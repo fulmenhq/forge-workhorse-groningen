@@ -10,14 +10,14 @@ All notable changes to this project will be documented in this file. Older entri
 
 ### Fixed
 
-- **Windows Platform Detection**: Updated `scripts/install-goneat.sh` to properly detect Windows/MINGW environments (`MINGW*`, `MSYS*`, `CYGWIN*`) and map to `windows` for goneat archive downloads
-- **Windows Archive Format**: goneat bootstrap now correctly downloads `.zip` archives for Windows instead of `.tar.gz`, and extracts using `unzip`
-- **Makefile Goneat Detection**: Fixed all Makefile targets (`tools`, `precommit`, `prepush`, `dependencies`, `version-bump`) to check local `./bin/goneat` first via `$(GONEAT_BIN)` variable instead of only checking system PATH
+- **Trust Anchor Bootstrap**: `make bootstrap` now requires `sfetch` and prints the canonical install + `sfetch --self-verify` pattern when missing
+- **goneat Hook Reliability**: Bootstrap now installs goneat via `sfetch` and pins to v0.3.16 (includes hook bugfixes)
+- **Cross-Platform Tool Install Dir**: Bootstrap selects a sensible user-space `BINDIR` (macOS/Linux `~/.local/bin`, Windows `%USERPROFILE%\\bin`), with `BINDIR=` override support
 - **Line Endings**: Normalized all text files to LF line endings via `.gitattributes` and git renormalization
 
 ### Changed
 
-- **Bootstrap Script**: Updated goneat version v0.3.9 → v0.3.10 with Windows platform support and SHA256 checksums (set to PENDING for new platforms)
+- **Tool Procurement**: Retired the repo-local `scripts/install-goneat.sh` downloader in favor of `sfetch` for goneat installation
 
 ### Improved
 
