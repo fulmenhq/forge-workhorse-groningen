@@ -18,13 +18,7 @@ lint:
       - "**/*.sh"
       - "scripts/**/*.sh"
       - ".goneat/hooks/*"
-    ignore:
-      - "**/node_modules/**"
-      - "**/.git/**"
-      - "**/vendor/**"
-      - "**/*.orig"
-      - "**/testdata/**"
-      - ".plans/**"
+    ignore: []
   github_actions:
     actionlint:
       enabled: true
