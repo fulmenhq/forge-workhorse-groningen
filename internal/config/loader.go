@@ -1,4 +1,4 @@
-// Package config provides centralized configuration management for the Groningen workhorse.
+// Package config provides centralized configuration management for the Groningen service.
 // It implements the three-layer config pattern using gofulmen/config:
 // Layer 1: Crucible defaults (config/groningen/v1.0.0/groningen-defaults.yaml)
 // Layer 2: User overrides (discovered via app identity)
@@ -181,11 +181,6 @@ func getUserConfigPaths() []string {
 		customPath := strings.ReplaceAll(p, "gofulmen", appIdentity.ConfigName)
 		paths = append(paths, customPath)
 	}
-
-	// Also add backward compatibility paths
-	// Old location: ~/.workhorse/config.yaml
-	// New location: ~/.config/groningen/config.yaml
-	// TODO: Add XDG config dir + old "workhorse" for backward compat
 
 	return paths
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/fulmenhq/gofulmen/appidentity"
@@ -42,19 +43,10 @@ func GetAppIdentity() *appidentity.Identity {
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "workhorse",
-	Short: "A Fulmen workhorse application for robust, scalable backends",
-	Long: `workhorse is a production-ready workhorse application template from the
-FulmenHQ ecosystem. This template provides enterprise-grade patterns for
-building robust, scalable Go backends.
-
-This template provides:
-- HTTP server with standard endpoints (/health, /version, /metrics)
-- Structured logging with progressive profiles (via gofulmen)
-- Three-layer configuration management
-- Graceful shutdown and signal handling
-- Observability and telemetry built-in
-- CLI commands for server management and diagnostics
+	// NOTE: initConfig() overwrites these from app identity.
+	Use:   "groningen",
+	Short: "A Fulmen application for robust, scalable backends",
+	Long: `Groningen is a production-ready Fulmen service template.
 
 Use the subcommands to perform specific operations.`,
 }
@@ -69,7 +61,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	// Global flags
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $XDG_CONFIG_HOME/fulmen/workhorse/config.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (optional; defaults to app identity config path)")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output (sets log level to debug)")
 
 	// Bind flags to viper
@@ -86,9 +78,18 @@ func initConfig() {
 	}
 	appIdentity = identity
 
-	// Update root command Use field with actual binary name
-	if identity != nil && identity.BinaryName != "" {
-		rootCmd.Use = identity.BinaryName
+	// Update CLI help surfaces from app identity (CDRL-friendly)
+	if identity != nil {
+		if identity.BinaryName != "" {
+			rootCmd.Use = identity.BinaryName
+		}
+		if identity.Description != "" {
+			rootCmd.Short = identity.Description
+			rootCmd.Long = fmt.Sprintf("%s - %s\n\nUse the subcommands to perform specific operations.", identity.BinaryName, identity.Description)
+		}
+		if f := rootCmd.PersistentFlags().Lookup("config"); f != nil && identity.ConfigName != "" {
+			f.Usage = fmt.Sprintf("config file (default is $XDG_CONFIG_HOME/%s/config.yaml)", identity.ConfigName)
+		}
 	}
 
 	// Initialize CLI logger early so we can use it in config loading
@@ -117,8 +118,8 @@ func initConfig() {
 			viper.AddConfigPath(appConfigDir)
 			viper.SetConfigName("config")
 
-			// Also check old location for backward compatibility
-			oldConfigDir := configDir + "/workhorse"
+			// Also check legacy location (older templates hardcoded a name)
+			oldConfigDir := configDir + "/" + appIdentity.BinaryName
 			viper.AddConfigPath(oldConfigDir)
 		}
 

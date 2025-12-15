@@ -66,7 +66,7 @@ func VersionHandler(w http.ResponseWriter, r *http.Request) {
 	identity := appIdentity
 	if identity == nil {
 		identity = &appidentity.Identity{
-			BinaryName: "workhorse",
+			BinaryName: "groningen",
 		}
 	}
 

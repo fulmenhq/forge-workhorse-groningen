@@ -47,7 +47,9 @@ version: 1.0.0
 - Environment variable prefixes (`MYAPI_*` instead of `GRONINGEN_*`)
 - Configuration file paths (`~/.config/mycompany/myapi.yaml`)
 - Telemetry namespaces in logs and metrics
-- Binary name in CLI help and HTTP responses
+- Binary name and description in CLI help and HTTP responses
+
+**Important**: `description` is shown in CLI help output. Update it to match your app (otherwise you'll see template wording like "workhorse").
 
 #### 3.2 Update Module Path
 
