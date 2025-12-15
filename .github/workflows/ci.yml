@@ -47,6 +47,8 @@ jobs:
       # goneat-tools-runner is a full CI runner image.
       # Use UID 1001 to match GitHub-hosted runner workspace ownership.
       options: --user 1001
+    env:
+      PROJECT_ROOT: ${{ github.workspace }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

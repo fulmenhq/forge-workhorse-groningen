@@ -37,6 +37,23 @@ var (
 // - Cross-platform compatibility
 // - Performance optimized (<30µs)
 func findProjectRoot() (string, error) {
+	// Allow an explicit override for CI/container environments where
+	// repository root discovery can be constrained by sandbox boundaries.
+	for _, key := range []string{"PROJECT_ROOT", "GITHUB_WORKSPACE"} {
+		if root := strings.TrimSpace(os.Getenv(key)); root != "" {
+			root = filepath.Clean(root)
+			if st, err := os.Stat(root); err != nil {
+				return "", fmt.Errorf("%s is set but invalid: %w", key, err)
+			} else if !st.IsDir() {
+				return "", fmt.Errorf("%s is set but not a directory: %s", key, root)
+			}
+			if _, err := os.Stat(filepath.Join(root, "go.mod")); err == nil {
+				return root, nil
+			}
+			// If go.mod is missing, fall through to auto-detection.
+		}
+	}
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current directory: %w", err)
