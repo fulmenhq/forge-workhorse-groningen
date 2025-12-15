@@ -4,7 +4,7 @@ This document explains the CI/CD setup for this repository.
 
 ## Container-Based CI Pattern
 
-This repository uses the **goneat-tools container** (`ghcr.io/fulmenhq/goneat-tools:v0.1.5`) for CI jobs. This is the recommended "low friction" approach from goneat v0.3.14+.
+This repository uses the **goneat-tools-runner container** (`ghcr.io/fulmenhq/goneat-tools-runner:v0.2.1`) for CI jobs. This is the recommended "low friction" approach from goneat v0.3.14+.
 
 ### Why Containers?
 
@@ -20,11 +20,11 @@ This eliminates tool installation friction in CI - no package manager setup, no 
 
 ### Container Permissions (`--user 1001`)
 
-This template uses `options: --user 1001` for `goneat-tools` container jobs.
+This template uses `options: --user 1001` for `goneat-tools-runner` container jobs.
 
 ```yaml
 container:
-  image: ghcr.io/fulmenhq/goneat-tools:v0.1.5
+  image: ghcr.io/fulmenhq/goneat-tools-runner:v0.2.1
   options: --user 1001
 ```
 
@@ -51,7 +51,9 @@ Add `set -euo pipefail` at the top of every multi-line `run` script. This catche
 ### CI Jobs
 
 1. **format-check**: Validates formatting using container tools (yamlfmt, prettier)
-2. **build-test**: Builds and tests the application using container tools + goneat binary
+2. **build-test**: Builds and tests the application using container tools + goneat
+
+Note: `actions/setup-go` installs Go inside the container job, and `golangci-lint-action` installs `golangci-lint` (not currently included in the runner image).
 
 ### Local Development
 
@@ -61,10 +63,10 @@ For local development, you have two options:
 
    ```bash
    docker run --rm -v "$(pwd)":/work -w /work --entrypoint "" \
-     ghcr.io/fulmenhq/goneat-tools:v0.1.5 yamlfmt -lint .
+     ghcr.io/fulmenhq/goneat-tools-runner:v0.2.1 yamlfmt -lint .
    ```
 
-2. **Install tools via sfetch + goneat**:
+2. **Install tools locally via sfetch + goneat**:
 
    ```bash
    # Install the trust anchor (sfetch)
@@ -83,6 +85,6 @@ For local development, you have two options:
 
 ## References
 
-- [goneat-tools container](https://github.com/fulmenhq/goneat-tools)
+- [fulmen-toolbox (goneat-tools-runner image source)](https://github.com/fulmenhq/fulmen-toolbox)
 - [goneat documentation](https://github.com/fulmenhq/goneat)
 - [GitHub Actions container jobs](https://docs.github.com/en/actions/using-jobs/running-jobs-in-a-container)

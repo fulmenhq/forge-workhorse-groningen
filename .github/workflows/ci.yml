@@ -9,12 +9,12 @@ permissions:
   contents: read
 jobs:
   # Container-based format checking (LOW friction - v0.3.14+)
-  # Uses goneat-tools container which has all foundation tools pre-installed
+  # Uses goneat-tools-runner which has foundation tools pre-installed
   format-check:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/fulmenhq/goneat-tools:v0.1.5
-      # goneat-tools runs as a non-root user by default.
+      image: ghcr.io/fulmenhq/goneat-tools-runner:v0.2.1
+      # goneat-tools-runner is a full CI runner image.
       # Use UID 1001 to match GitHub-hosted runner workspace ownership.
       options: --user 1001
     steps:
@@ -37,15 +37,14 @@ jobs:
           yamlfmt -lint .
           prettier --check "**/*.{md,json}" || \
             echo "Prettier differences found (non-blocking)"
-  # Build and test using goneat-tools container
-  # Container provides foundation tools; we install goneat separately
-  # Container provides foundation tools; we install goneat binary separately
+  # Build and test using goneat-tools-runner container
+  # Runner provides foundation tools + goneat/sfetch; Go is set up separately.
   build-test:
     needs: [format-check]
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/fulmenhq/goneat-tools:v0.1.5
-      # goneat-tools runs as a non-root user by default.
+      image: ghcr.io/fulmenhq/goneat-tools-runner:v0.2.1
+      # goneat-tools-runner is a full CI runner image.
       # Use UID 1001 to match GitHub-hosted runner workspace ownership.
       options: --user 1001
     steps:
@@ -54,46 +53,44 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: Check Go presence (pre-setup)
+        run: |
+          set -euo pipefail
+          if command -v go >/dev/null 2>&1; then
+            echo "Go already present:"; go version
+          else
+            echo "Go not present (expected); installing via actions/setup-go"
+          fi
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
-      - name: Install sfetch + goneat
+      - name: Verify runner + Go toolchain
         run: |
           set -euo pipefail
-          BIN_DIR="$HOME/.local/bin"
-          mkdir -p "$BIN_DIR"
-          SFETCH_INSTALL_URL="https://github.com/3leaps/sfetch/releases/latest/download/"
-          SFETCH_INSTALL_URL="${SFETCH_INSTALL_URL}install-sfetch.sh"
-          curl -sSfL "$SFETCH_INSTALL_URL" | bash -s -- --yes --dir "$BIN_DIR"
-          export PATH="$BIN_DIR:$PATH"
-          sfetch --self-verify
-          sfetch --repo fulmenhq/goneat --tag v0.3.16 \
-            --dest-dir "$BIN_DIR"
-          if [ -f "$BIN_DIR/goneat.exe" ] && \
-            [ ! -f "$BIN_DIR/goneat" ]; then
-            mv "$BIN_DIR/goneat.exe" "$BIN_DIR/goneat"
-          fi
-          goneat --version
-          go mod download
-      - name: Verify foundation tools available
-        run: |
-          set -euo pipefail
-          echo "=== Foundation tools from container ==="
           prettier --version
           yamlfmt --version
-          echo "=== Goneat installed ==="
+          sfetch --version
           goneat --version
+          command -v go
+          go version
+          go env GOPATH
+          go mod download
       - name: Format (using goneat - fail on diff)
         run: |
           set -euo pipefail
           make fmt
           git diff --exit-code
       - name: Install golangci-lint (v2)
+        # goneat-tools-runner does not ship golangci-lint yet.
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.4.0
           args: --help
+      - name: Verify golangci-lint
+        run: |
+          set -euo pipefail
+          golangci-lint --version
       - name: Lint
         run: |
           set -euo pipefail
