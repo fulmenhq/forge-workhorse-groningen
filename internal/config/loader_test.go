@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -10,8 +11,42 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func findRepoRootForTest(t *testing.T) string {
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	dir := cwd
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+
+	t.Fatalf("could not locate repo root containing go.mod from %s", cwd)
+	return ""
+}
+
 func TestLoad(t *testing.T) {
 	ctx := context.Background()
+
+	// Regression test: in CI containers the repo checkout may be outside $HOME.
+	// When $HOME is not an ancestor of the repo, pathfinder's default home boundary
+	// can prevent repo root discovery unless a CI boundary hint is applied.
+	t.Run("CIBoundaryHint", func(t *testing.T) {
+		repoRoot := findRepoRootForTest(t)
+		t.Setenv("HOME", t.TempDir())
+		t.Setenv("CI", "true")
+		t.Setenv("FULMEN_WORKSPACE_ROOT", repoRoot)
+
+		cfg, err := Load(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, cfg)
+	})
 
 	// Test basic config loading with defaults
 	t.Run("LoadDefaults", func(t *testing.T) {

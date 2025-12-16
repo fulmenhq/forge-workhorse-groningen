@@ -37,31 +37,47 @@ var (
 // - Cross-platform compatibility
 // - Performance optimized (<30µs)
 func findProjectRoot() (string, error) {
-	// Allow an explicit override for CI/container environments where
-	// repository root discovery can be constrained by sandbox boundaries.
-	for _, key := range []string{"PROJECT_ROOT", "GITHUB_WORKSPACE"} {
-		if root := strings.TrimSpace(os.Getenv(key)); root != "" {
-			root = filepath.Clean(root)
-			if st, err := os.Stat(root); err != nil {
-				return "", fmt.Errorf("%s is set but invalid: %w", key, err)
-			} else if !st.IsDir() {
-				return "", fmt.Errorf("%s is set but not a directory: %s", key, root)
-			}
-			if _, err := os.Stat(filepath.Join(root, "go.mod")); err == nil {
-				return root, nil
-			}
-			// If go.mod is missing, fall through to auto-detection.
-		}
-	}
-
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("failed to get current directory: %w", err)
 	}
 
-	// Use pathfinder with Go project markers (go.mod or .git)
-	// This replaces the manual implementation with a robust, well-tested solution
 	markers := []string{"go.mod", ".git"}
+
+	// CI-only boundary hint pattern:
+	// - Treat CI workspace env vars as a boundary hint, not "the root".
+	// - Still require repository markers.
+	isCI := strings.EqualFold(strings.TrimSpace(os.Getenv("GITHUB_ACTIONS")), "true") ||
+		strings.EqualFold(strings.TrimSpace(os.Getenv("CI")), "true")
+	if isCI {
+		boundaryKeys := []string{"FULMEN_WORKSPACE_ROOT", "GITHUB_WORKSPACE", "CI_PROJECT_DIR", "WORKSPACE"}
+		for _, key := range boundaryKeys {
+			boundary := strings.TrimSpace(os.Getenv(key))
+			if boundary == "" {
+				continue
+			}
+			boundary = filepath.Clean(boundary)
+			if !filepath.IsAbs(boundary) {
+				continue
+			}
+			st, err := os.Stat(boundary)
+			if err != nil || !st.IsDir() {
+				continue
+			}
+			// Only accept a boundary that contains the start path.
+			if rel, err := filepath.Rel(boundary, cwd); err != nil || strings.HasPrefix(rel, "..") {
+				continue
+			}
+			rootPath, err := pathfinder.FindRepositoryRoot(cwd, markers,
+				pathfinder.WithBoundary(boundary),
+				pathfinder.WithMaxDepth(20),
+			)
+			if err == nil {
+				return rootPath, nil
+			}
+		}
+	}
+
 	rootPath, err := pathfinder.FindRepositoryRoot(cwd, markers, pathfinder.WithMaxDepth(10))
 	if err != nil {
 		return "", fmt.Errorf("project root not found: %w", err)
