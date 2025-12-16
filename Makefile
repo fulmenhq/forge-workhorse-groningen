@@ -1,4 +1,5 @@
 .PHONY: all help bootstrap bootstrap-force hooks-ensure tools sync dependencies verify-dependencies version-bump lint test build build-all clean fmt version check-all precommit prepush run install test-cov
+.PHONY: release-clean release-download release-sign verify-release-key release-upload
 .PHONY: version-set version-bump-major version-bump-minor version-bump-patch release-check release-prepare release-build
 
 # Binary and version information
@@ -147,6 +148,28 @@ release-prepare:  ## Prepare for release (tests, version bump)
 
 release-build: build-all  ## Build release artifacts (binaries + checksums)
 	@echo "✅ Release build complete"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Manual signing workflow helpers (modeled after sfetch/fulmen-toolbox)
+# ─────────────────────────────────────────────────────────────────────────────
+
+RELEASE_TAG ?= v$(shell cat VERSION 2>/dev/null || echo "0.0.0")
+DIST_RELEASE ?= dist/release
+
+release-clean: ## Clean dist/release and dist/signing
+	@echo "🧹 Cleaning $(DIST_RELEASE) and dist/signing..."; rm -rf "$(DIST_RELEASE)" dist/signing; mkdir -p "$(DIST_RELEASE)"; echo "✅ Cleaned"
+
+release-download: ## Download GitHub release assets (RELEASE_TAG=vX.Y.Z)
+	@./scripts/release-download.sh "$(RELEASE_TAG)" "$(DIST_RELEASE)"
+
+release-sign: ## Sign downloaded assets (SIGNING_KEY_ID=...)
+	@SIGNING_KEY_ID="$(SIGNING_KEY_ID)" ./scripts/sign-release-artifacts.sh "$(DIST_RELEASE)"
+
+verify-release-key: ## Verify dist/signing/public-key.asc is public-only
+	@./scripts/verify-public-key.sh dist/signing/public-key.asc
+
+release-upload: verify-release-key ## Upload signatures + public key (RELEASE_TAG=vX.Y.Z)
+	@./scripts/release-upload.sh "$(RELEASE_TAG)" "$(DIST_RELEASE)"
 
 build:  ## Build binary for current platform
 	@echo "→ Building $(BINARY_NAME) v$(VERSION)..."
