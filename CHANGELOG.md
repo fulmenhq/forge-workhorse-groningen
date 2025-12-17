@@ -4,24 +4,27 @@ All notable changes to this project will be documented in this file. Older entri
 
 ## [Unreleased]
 
+## [0.1.5] - 2025-12-16
+
 ### Added
 
-- **Git Attributes**: Created `.gitattributes` file to enforce LF line endings for all text files across platforms, preventing CRLF issues on Windows
+- **Release signing helpers**: Manual download/sign/upload scripts and Make targets to support offline/controlled signing.
 
 ### Fixed
 
-- **Trust Anchor Bootstrap**: `make bootstrap` now requires `sfetch` and prints the canonical install + `sfetch --self-verify` pattern when missing
-- **goneat Hook Reliability**: Bootstrap now installs goneat via `sfetch` and pins to v0.3.16 (includes hook bugfixes)
-- **Cross-Platform Tool Install Dir**: Bootstrap selects a sensible user-space `BINDIR` (macOS/Linux `~/.local/bin`, Windows `%USERPROFILE%\\bin`), with `BINDIR=` override support
-- **Line Endings**: Normalized all text files to LF line endings via `.gitattributes` and git renormalization
+- **Release workflow gating**: Release workflow now runs only for `refs/tags/v*` and no longer fails on normal `main` pushes.
 
 ### Changed
 
-- **Tool Procurement**: Retired the repo-local `scripts/install-goneat.sh` downloader in favor of `sfetch` for goneat installation
+- **Tooling**: Configured goneat v0.3.21 `lint.shell.shfmt.args` so shell formatting is deterministic across machines.
 
-### Improved
+## [0.1.4] - 2025-12-15
 
-- **Cross-Platform Compatibility**: Verified Windows support with successful bootstrap and test suite execution on MINGW64_NT-10.0-26200
+### Changed
+
+- **Dependencies**: Upgraded gofulmen to v0.1.21 (transitively pulls Crucible v0.2.21 via gofulmen).
+- **CI root discovery**: CI now exports `FULMEN_WORKSPACE_ROOT` (GitHub workspace) and the config loader uses it as a boundary hint in CI.
+- **Release automation**: Added a tag-triggered release workflow to publish build artifacts to GitHub Releases.
 
 ## [0.1.3] - 2025-12-01
 
