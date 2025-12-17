@@ -11,6 +11,11 @@ lint:
     shfmt:
       enabled: true
       fix: false
+      args:
+        - "-i"
+        - "4"
+        - "-ci"
+        - "-sr"
     shellcheck:
       enabled: false
       path: ""
