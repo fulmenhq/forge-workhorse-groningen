@@ -3,6 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/fulmenhq/gofulmen/appidentity"
@@ -62,11 +64,15 @@ type RuntimeInfo struct {
 func VersionHandler(w http.ResponseWriter, r *http.Request) {
 	version := crucible.GetVersion()
 
-	// Use app identity if set, otherwise fallback to default
+	// Use app identity if set, otherwise fallback to the executable name.
 	identity := appIdentity
 	if identity == nil {
+		fallbackName := "unknown"
+		if len(os.Args) > 0 && os.Args[0] != "" {
+			fallbackName = filepath.Base(os.Args[0])
+		}
 		identity = &appidentity.Identity{
-			BinaryName: "groningen",
+			BinaryName: fallbackName,
 		}
 	}
 

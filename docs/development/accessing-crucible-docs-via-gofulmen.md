@@ -1,7 +1,7 @@
 ---
 title: "Accessing Crucible Documentation via gofulmen"
-description: "How Groningen developers can read embedded Crucible docs, schemas, and config directly from gofulmen"
-last_updated: "2025-10-29"
+description: "How Workhorse template developers can read embedded Crucible docs, schemas, and config directly from gofulmen"
+last_updated: "2025-12-17"
 ---
 
 # Accessing Crucible Documentation via gofulmen
@@ -10,9 +10,9 @@ When you import `github.com/fulmenhq/gofulmen`, you automatically gain access to
 
 ## Prerequisites
 
-- gofulmen `v0.1.7` or newer in your `go.mod`
-- Crucible `v0.2.1` assets (bundled transitively with the gofulmen release)
-- Go 1.23+ (matches Groningen toolchain)
+- gofulmen `v0.1.21` or newer in your `go.mod`
+- Crucible `v0.2.21` assets (bundled transitively with the gofulmen release)
+- Go 1.25+ (matches the current toolchain)
 
 ## Quick Start
 
@@ -86,7 +86,7 @@ For debugging, `crucible.ListDocs("")` can confirm which files shipped with your
 - `standards/coding/go.md` – Fulmen Go coding standards
 - `sop/repository-structure.md` – repository structure SOP
 
-## Usage in Groningen
+## Usage in This Template
 
 - Prefer `crucible.GetDoc(<path>)` within CLI commands (`envinfo`, `doctor`) when you need to surface Fulmen guidance.
 - Keep paths centralized (for example, constants in `internal/crucible/paths.go`) so upgrades to Crucible releases are easy to track.

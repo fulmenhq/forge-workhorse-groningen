@@ -4,6 +4,35 @@ This document tracks release notes for forge-workhorse-groningen releases.
 
 > **Convention**: Keep only the latest 3 releases here to prevent file bloat. Older releases are archived in `docs/releases/`.
 
+## [0.1.6] - 2025-12-17
+
+### CDRL Hardening & Template Residue Cleanup (Patch)
+
+**Release Type**: Patch Release (CDRL Reliability + Docs)
+**Status**: ✅ Released
+
+#### Overview
+
+This patch reduces CDRL friction by removing template-name defaults from CLI surfaces and `/version` handler fallbacks, updating tests to be identity-driven, and making Makefile outputs more refit-friendly. It also refreshes the developer guide for accessing embedded Crucible docs via gofulmen.
+
+#### Key Changes
+
+- **CDRL hardening**:
+  - CLI root defaults are template-neutral and overwritten by app identity.
+  - `/version` fallback derives from the executable name rather than hardcoding `groningen`.
+  - Unit tests avoid asserting template-specific identity values.
+  - Makefile help banner and SBOM output use `$(BINARY_NAME)`.
+- **Docs**: Updated Crucible-docs access guide wording and version prerequisites.
+- **Release workflow**: Asset upload uses `bin/*` to avoid baking in a template binary name.
+- **Dependencies**: gofulmen v0.1.22 (Crucible v0.2.23 transitively)
+- **Version**: Updated `VERSION` to 0.1.6
+
+#### Migration Notes
+
+No migration required for template consumers.
+
+---
+
 ## [0.1.5] - 2025-12-16
 
 ### CI + Release Workflow Completion (Patch)
@@ -52,23 +81,3 @@ This patch bumps gofulmen to v0.1.21 and adds the initial tag-triggered release 
 No migration required for template consumers.
 
 ---
-
-## [0.1.3] - 2025-12-01
-
-### Dependency Refresh (Patch)
-
-**Release Type**: Patch Release (Dependency Update)
-**Status**: ✅ Released
-
-#### Overview
-
-This patch bumps gofulmen to v0.1.20 (bringing embedded Crucible v0.2.20 transitively) and advances the template version to 0.1.3. Quality gates (fmt, lint, test) and `make build` pass.
-
-#### Key Changes
-
-- **Dependencies**: gofulmen v0.1.20 (Crucible v0.2.20 transitively)
-- **Version**: Updated `VERSION` to 0.1.3
-
-#### Migration Notes
-
-No code changes are required for template consumers; pull the new version and continue using `.fulmen/app.yaml` for identity.

@@ -15,6 +15,8 @@ import (
 
 	"github.com/fulmenhq/gofulmen/appidentity"
 	gfconfig "github.com/fulmenhq/gofulmen/config"
+
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/appid"
 	"github.com/fulmenhq/gofulmen/pathfinder"
 	"github.com/fulmenhq/gofulmen/schema"
 	"github.com/go-viper/mapstructure/v2"
@@ -106,7 +108,7 @@ const (
 func Load(ctx context.Context, runtimeOverrides ...map[string]any) (*Config, error) {
 	// Get app identity if not already loaded
 	if appIdentity == nil {
-		identity, err := appidentity.Get(ctx)
+		identity, err := appid.Get(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load app identity: %w", err)
 		}

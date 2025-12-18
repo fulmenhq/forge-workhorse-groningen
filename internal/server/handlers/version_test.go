@@ -12,7 +12,7 @@ import (
 func TestVersionHandlerIncludesIdentityMetadata(t *testing.T) {
 	SetVersionInfo("1.2.3", "abcd123", "2025-11-07T12:00:00Z")
 	SetAppIdentity(&appidentity.Identity{
-		BinaryName: "groningen",
+		BinaryName: "example-service",
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/version", nil)
@@ -29,8 +29,8 @@ func TestVersionHandlerIncludesIdentityMetadata(t *testing.T) {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if resp.App.Name != "groningen" {
-		t.Fatalf("expected app name groningen, got %s", resp.App.Name)
+	if resp.App.Name != "example-service" {
+		t.Fatalf("expected app name example-service, got %s", resp.App.Name)
 	}
 
 	if resp.App.Version != "1.2.3" {

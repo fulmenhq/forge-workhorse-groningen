@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file. Older entri
 
 ## [Unreleased]
 
+## [0.1.6] - 2025-12-17
+
+### Fixed
+
+- **CDRL hardcoded residue**: Removed template-name defaults from CLI surfaces and `/version` fallback, made tests CDRL-safe, and updated Makefile help/SBOM output to use `$(BINARY_NAME)`.
+- **Developer docs**: Updated Crucible-docs access guide to be template-neutral and aligned with current toolchain.
+
+### Changed
+
+- **Dependencies**: Upgraded gofulmen to v0.1.22 (Crucible v0.2.23 transitively).
+- **Release workflow assets**: Release workflow now uploads `bin/*` rather than hardcoding the template binary name.
+
 ## [0.1.5] - 2025-12-16
 
 ### Added

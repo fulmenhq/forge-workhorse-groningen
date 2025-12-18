@@ -48,7 +48,7 @@ BINDIR_RESOLVE = \
 	fi
 
 # Tooling
-GONEAT_VERSION := v0.3.16
+GONEAT_VERSION := v0.3.21
 
 SFETCH_RESOLVE = \
 	$(BINDIR_RESOLVE); \
@@ -67,7 +67,7 @@ GONEAT_RESOLVE = \
 all: fmt test
 
 help:  ## Show this help message
-	@printf '%s\n' 'Groningen - Available Make Targets' '' 'Required targets (Makefile Standard):' '  help            - Show this help message' '  bootstrap       - Install external tools (sfetch, goneat) and dependencies' '  bootstrap-force - Force reinstall external tools' '  tools           - Verify external tools are available' '  dependencies    - Generate SBOM for supply-chain security' '  lint            - Run lint/format/style checks' '  test            - Run all tests' '  build           - Build distributable artifacts' '  build-all       - Build multi-platform binaries' '  clean           - Remove build artifacts and caches' '  fmt             - Format code' '  version         - Print current version' '  version-set     - Set version to specific value' '  version-bump-major - Bump major version' '  version-bump-minor - Bump minor version' '  version-bump-patch - Bump patch version' '  release-check   - Run release checklist validation' '  release-prepare - Prepare for release' '  release-build   - Build release artifacts' '  check-all       - Run all quality checks (fmt, lint, test)' '  precommit       - Run pre-commit hooks (check-all)' '  prepush         - Run pre-push hooks (check-all)' '' 'Additional targets:' '  run             - Run server in development mode' '  test-cov        - Run tests with coverage report' ''
+	@printf '%s\n' '$(BINARY_NAME) - Available Make Targets' '' 'Required targets (Makefile Standard):' '  help            - Show this help message' '  bootstrap       - Install external tools (sfetch, goneat) and dependencies' '  bootstrap-force - Force reinstall external tools' '  tools           - Verify external tools are available' '  dependencies    - Generate SBOM for supply-chain security' '  lint            - Run lint/format/style checks' '  test            - Run all tests' '  build           - Build distributable artifacts' '  build-all       - Build multi-platform binaries' '  clean           - Remove build artifacts and caches' '  fmt             - Format code' '  version         - Print current version' '  version-set     - Set version to specific value' '  version-bump-major - Bump major version' '  version-bump-minor - Bump minor version' '  version-bump-patch - Bump patch version' '  release-check   - Run release checklist validation' '  release-prepare - Prepare for release' '  release-build   - Build release artifacts' '  check-all       - Run all quality checks (fmt, lint, test)' '  precommit       - Run pre-commit hooks (check-all)' '  prepush         - Run pre-push hooks (check-all)' '' 'Additional targets:' '  run             - Run server in development mode' '  test-cov        - Run tests with coverage report' ''
 
 bootstrap:  ## Install external tools (sfetch, goneat) and dependencies
 	@echo "Installing external tools..."
@@ -99,8 +99,8 @@ sync:  ## Sync assets from Crucible SSOT (placeholder)
 	@echo "✅ Sync target satisfied (no-op)"
 
 dependencies:  ## Generate SBOM for supply-chain security
-	@echo "Generating Software Bill of Materials (SBOM)..."; $(GONEAT_RESOLVE); $$GONEAT dependencies --sbom --sbom-output sbom/groningen.cdx.json
-	@echo "✅ SBOM generated at sbom/groningen.cdx.json"
+	@echo "Generating Software Bill of Materials (SBOM)..."; $(GONEAT_RESOLVE); $$GONEAT dependencies --sbom --sbom-output sbom/$(BINARY_NAME).cdx.json
+	@echo "✅ SBOM generated at sbom/$(BINARY_NAME).cdx.json"
 
 verify-dependencies:  ## Alias for dependencies (compatibility)
 	@$(MAKE) dependencies

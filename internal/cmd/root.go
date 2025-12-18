@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/fulmenhq/gofulmen/appidentity"
 	"github.com/fulmenhq/gofulmen/foundry"
+
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/appid"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -44,9 +47,9 @@ func GetAppIdentity() *appidentity.Identity {
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	// NOTE: initConfig() overwrites these from app identity.
-	Use:   "groningen",
-	Short: "A Fulmen application for robust, scalable backends",
-	Long: `Groningen is a production-ready Fulmen service template.
+	Use:   filepath.Base(os.Args[0]),
+	Short: "A Fulmen workhorse application template",
+	Long: `A production-ready Fulmen workhorse service template.
 
 Use the subcommands to perform specific operations.`,
 }
@@ -72,7 +75,7 @@ func init() {
 func initConfig() {
 	// Load app identity from .fulmen/app.yaml
 	ctx := context.Background()
-	identity, err := appidentity.Get(ctx)
+	identity, err := appid.Get(ctx)
 	if err != nil {
 		ExitWithCodeStderr(foundry.ExitFileNotFound, "Failed to load app identity from .fulmen/app.yaml", err)
 	}

@@ -2,16 +2,17 @@ package cmd
 
 import (
 	"context"
+	"strings"
 	"testing"
 
-	"github.com/fulmenhq/gofulmen/appidentity"
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/appid"
 )
 
 func TestAppIdentityLoading(t *testing.T) {
 	t.Run("load app identity from .fulmen/app.yaml", func(t *testing.T) {
 		// Load app identity the same way the application does
 		ctx := context.Background()
-		identity, err := appidentity.Get(ctx)
+		identity, err := appid.Get(ctx)
 
 		// Should load successfully
 		if err != nil {
@@ -41,21 +42,12 @@ func TestAppIdentityLoading(t *testing.T) {
 			}
 		}
 
-		// Specific assertions for template values
-		if identity.Vendor != "fulmen" {
-			t.Errorf("Expected vendor 'fulmen', got '%s'", identity.Vendor)
+		// CDRL-safe invariants: these should remain true after refit.
+		if identity.EnvPrefix == "" {
+			t.Errorf("Expected env_prefix to be non-empty")
 		}
-
-		if identity.BinaryName != "groningen" {
-			t.Errorf("Expected binary_name 'groningen', got '%s'", identity.BinaryName)
-		}
-
-		if identity.EnvPrefix != "GRONINGEN_" {
-			t.Errorf("Expected env_prefix 'GRONINGEN_', got '%s'", identity.EnvPrefix)
-		}
-
-		if identity.ConfigName != "groningen" {
-			t.Errorf("Expected config_name 'groningen', got '%s'", identity.ConfigName)
+		if identity.EnvPrefix != "" && !strings.HasSuffix(identity.EnvPrefix, "_") {
+			t.Errorf("Expected env_prefix to end with underscore, got '%s'", identity.EnvPrefix)
 		}
 	})
 }

@@ -19,7 +19,12 @@ var doctorCmd = &cobra.Command{
 	Short: "Run diagnostic checks",
 	Long:  "Run diagnostic checks on the system and suggest fixes for common issues.",
 	Run: func(cmd *cobra.Command, args []string) {
-		observability.CLILogger.Info("=== Groningen Doctor ===")
+		identity := GetAppIdentity()
+		bannerName := "doctor"
+		if identity != nil && identity.BinaryName != "" {
+			bannerName = identity.BinaryName + " doctor"
+		}
+		observability.CLILogger.Info("=== " + bannerName + " ===")
 		observability.CLILogger.Info("")
 		observability.CLILogger.Info("Running diagnostic checks...")
 		observability.CLILogger.Info("")
@@ -70,8 +75,7 @@ var doctorCmd = &cobra.Command{
 
 		observability.CLILogger.Info("")
 		if allChecks {
-			identity := GetAppIdentity()
-			observability.CLILogger.Info(fmt.Sprintf("✅ All checks passed! Your %s installation is healthy.", identity.BinaryName))
+			observability.CLILogger.Info(fmt.Sprintf("✅ All checks passed! Your %s installation is healthy.", bannerName))
 		} else {
 			observability.CLILogger.Warn("⚠️  Some checks failed. Review the output above for details.")
 		}

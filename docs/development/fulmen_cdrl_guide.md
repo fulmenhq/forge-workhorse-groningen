@@ -59,6 +59,41 @@ Edit `go.mod`:
 module github.com/mycompany/myapi
 ```
 
+#### Optional: Reset `VERSION`
+
+If you’re starting a new product/repo from this template, reset the template version:
+
+```bash
+echo "0.1.0" > VERSION
+```
+
+#### Optional: Purge Template-Only Release Docs
+
+Template release artifacts are safe to delete during CDRL:
+
+```bash
+rm -f CHANGELOG.md
+rm -f RELEASE_NOTES.md
+rm -rf docs/releases/
+```
+
+You may also choose to remove template-specific docs and ADRs and replace them with your own:
+
+```bash
+rm -f docs/groningen-overview.md
+rm -rf docs/architecture/decisions/
+```
+
+#### Recommended: Verify No Remaining Template References
+
+After refit, confirm you don’t still reference template identifiers:
+
+```bash
+rg -n "groningen" --glob '*.{go,md,yaml,yml,json,mod,sum}' --glob 'Makefile'
+```
+
+If the output is non-empty, update the remaining references (common places: CLI help text, tests, Make targets, config comments).
+
 #### 3.3 Update Environment Variables
 
 Copy `.env.example` to `.env` and customize:

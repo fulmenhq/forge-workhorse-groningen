@@ -4,8 +4,9 @@ import (
 	"context"
 	"os"
 
-	"github.com/fulmenhq/gofulmen/appidentity"
 	"github.com/fulmenhq/gofulmen/signals"
+
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/appid"
 	"go.uber.org/zap"
 
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
@@ -34,7 +35,7 @@ func (s *Server) registerRoutes() {
 func (s *Server) registerAdminEndpoint() {
 	// Get admin token from environment (identity-aware)
 	ctx := context.Background()
-	identity, _ := appidentity.Get(ctx)
+	identity, _ := appid.Get(ctx)
 	envPrefix := "WORKHORSE_"
 	if identity != nil && identity.EnvPrefix != "" {
 		envPrefix = identity.EnvPrefix
