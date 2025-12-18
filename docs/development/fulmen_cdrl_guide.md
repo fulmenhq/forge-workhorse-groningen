@@ -36,7 +36,7 @@ Edit `.fulmen/app.yaml` to match your application:
 vendor: mycompany # Your organization
 binary_name: myapi # Your application name
 service_type: workhorse # Keep this for workhorse templates
-env_prefix: MYAPI # Your env var prefix (uppercase)
+env_prefix: MYAPI_ # Your env var prefix (uppercase, include trailing underscore)
 config_name: myapi # Your config file name
 description: "My API service for processing data"
 version: 1.0.0
@@ -50,6 +50,22 @@ version: 1.0.0
 - Binary name and description in CLI help and HTTP responses
 
 **Important**: `description` is shown in CLI help output. Update it to match your app (otherwise you'll see template wording like "workhorse").
+
+#### Release Signing Env Var Prefix (Recommended)
+
+This template’s manual release signing workflow supports app-scoped env vars of the form `<APP>_<VAR>` (plus a few generic fallbacks). After CDRL refit, you should update these to match your new application name.
+
+Example: if your binary is `myapi`, prefer:
+
+```bash
+export MYAPI_MINISIGN_KEY=/path/to/myapi.key
+export MYAPI_MINISIGN_PUB=/path/to/myapi.pub
+export MYAPI_PGP_KEY_ID="security@mycompany.com"   # optional
+export MYAPI_GPG_HOME=/path/to/gnupg-mycompany      # required if PGP_KEY_ID is set
+export RELEASE_TAG=v1.0.0
+```
+
+The Make targets also honor `SIGNING_ENV_PREFIX` (defaults to `$(BINARY_NAME)` uppercased) if you need to override the inferred `<APP>` prefix.
 
 #### 3.2 Update Module Path
 

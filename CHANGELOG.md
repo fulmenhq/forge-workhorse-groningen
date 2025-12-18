@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file. Older entri
 
 ## [Unreleased]
 
+## [0.1.7] - 2025-12-18
+
+### Added
+
+- **Release provenance workflow**: Added minisign-first (primary) manifest signing plus optional PGP, with dual manifests (`SHA256SUMS`, `SHA512SUMS`) staged under `dist/release/`.
+- **Release upload modes**: `make release-upload` now uploads provenance outputs only; `make release-upload-all` exists for fully manual artifact publishing.
+- **Checksum verification**: Added `make verify-checksums` to confirm manifests match staged artifacts.
+
+### Fixed
+
+- **Release workflow**: CI release publishing now uploads `dist/release/*` (avoids `bin/` footguns and duplicate checksum uploads).
+
+### Changed
+
+- **CDRL guidance**: Documented refitting the signing env var prefix (`<APP>_…`) and clarified `env_prefix` should include the trailing underscore.
+- **Release checklist**: Expanded signing section to call out prep vs signing steps and the provenance-only upload default.
+
 ## [0.1.6] - 2025-12-17
 
 ### Fixed

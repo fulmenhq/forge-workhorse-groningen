@@ -4,6 +4,32 @@ This document tracks release notes for forge-workhorse-groningen releases.
 
 > **Convention**: Keep only the latest 3 releases here to prevent file bloat. Older releases are archived in `docs/releases/`.
 
+## [0.1.7] - 2025-12-18
+
+### Release Signing Workflow Parity (Patch)
+
+**Release Type**: Patch Release (Release Process Reliability)
+**Status**: 🚧 Prepared
+
+#### Overview
+
+This patch aligns Groningen’s manual release-signing workflow with Fulmen conventions: artifacts stage in `dist/release/`, checksum manifests are dual-generated (`SHA256SUMS` + `SHA512SUMS`), and signing is manifest-only (minisign primary, optional PGP). It also fixes the CI release publishing workflow to upload the staged `dist/release/*` set.
+
+#### Key Changes
+
+- **Release artifacts staging**: `make release-build` stages cross-platform binaries in `dist/release/` and generates checksum manifests.
+- **Manifest-only signing**: `make release-sign` signs `SHA256SUMS`/`SHA512SUMS` with minisign and optionally PGP.
+- **Trust anchors**: `make release-export-keys` exports minisign and PGP public keys into `dist/release/`.
+- **Validation**: `make verify-checksums` verifies checksum manifests; `make verify-release-keys` verifies exported keys are public-only.
+- **Upload safety**: `make release-upload` uploads provenance outputs only (manifests + signatures + public keys + release notes). Use `make release-upload-all` for fully manual artifact publishing.
+- **CI release workflow**: tag-triggered release publishing now uploads `dist/release/*`.
+
+#### Migration Notes
+
+No migration required for template consumers.
+
+---
+
 ## [0.1.6] - 2025-12-17
 
 ### CDRL Hardening & Template Residue Cleanup (Patch)
@@ -51,30 +77,6 @@ This patch completes the gofulmen bump to v0.1.21 and hardens CI repository-root
 - **Release automation**: Tag-triggered GitHub Release publishing plus manual download/sign/upload helpers
 - **Tooling**: Configured `lint.shell.shfmt.args` (goneat v0.3.21) and reformatted scripts/hooks to match
 - **Version**: Updated `VERSION` to 0.1.5
-
-#### Migration Notes
-
-No migration required for template consumers.
-
----
-
-## [0.1.4] - 2025-12-15
-
-### Dependency Refresh + Initial Release Workflow (Patch)
-
-**Release Type**: Patch Release (Dependency Update + CI/Release Tooling)
-**Status**: ⚠️ Tagged (superseded by 0.1.5)
-
-#### Overview
-
-This patch bumps gofulmen to v0.1.21 and adds the initial tag-triggered release workflow, plus CI repository-root boundary hints. This release is superseded by 0.1.5 due to follow-up release workflow config + signing improvements.
-
-#### Key Changes
-
-- **Dependencies**: gofulmen v0.1.21 (Crucible v0.2.21 transitively)
-- **CI root boundary**: CI exports `FULMEN_WORKSPACE_ROOT`; loader uses it as a boundary hint only in CI
-- **Release automation**: Initial tag-triggered GitHub Release workflow
-- **Version**: Updated `VERSION` to 0.1.4
 
 #### Migration Notes
 

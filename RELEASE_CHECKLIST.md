@@ -72,14 +72,36 @@ Standard checklist for forge-workhorse-groningen releases to ensure consistency 
 
 ## Release Execution
 
-### Signing (manual, template-friendly)
+### Release Artifacts & Signing (manual, template-friendly)
 
-- [ ] Build artifacts and checksums (`make release-build`)
-- [ ] Sign artifacts with your GPG key:
-  - [ ] `SIGNING_KEY_ID=<your-key> ./scripts/sign-release-artifacts.sh bin`
-  - [ ] Ensure `.asc` signatures exist alongside artifacts and SHA256SUMS
-  - [ ] Export public key at `dist/signing/public-key.asc` and attach with release
-- [ ] CDRL note: downstream users must replace Fulmen signatures with their own keys after refit
+Follow the Fulmen “manifest-only” provenance pattern:
+
+- Generate SHA256 + SHA512 manifests
+- Sign manifests with minisign (primary) and optionally PGP
+- Ship trust anchors (public keys) with the release
+
+- [ ] Stage clean artifacts and generate manifests: `make release-build`
+  - This runs: `release-clean` → build cross-platform binaries into `dist/release/` → `make checksums`.
+  - `make release-sign` does **not** build or download artifacts; it only signs existing `SHA256SUMS`/`SHA512SUMS`.
+- [ ] Validate manifests match artifacts: `make verify-checksums`
+- [ ] Sign manifests (minisign required; PGP optional):
+
+  ```bash
+  export RELEASE_TAG=v<version>
+  export GRONINGEN_MINISIGN_KEY=/path/to/groningen.key
+  export GRONINGEN_MINISIGN_PUB=/path/to/groningen.pub
+  export GRONINGEN_PGP_KEY_ID="security@fulmenhq.dev"   # optional (may be a signing subkey/fpr depending on key layout)
+  export GRONINGEN_GPG_HOME=/path/to/gnupg-fulmenhq       # required if PGP_KEY_ID is set
+  make release-sign
+  ```
+
+- [ ] Export public keys into `dist/release/`: `make release-export-keys`
+- [ ] Verify exported keys are public-only: `make verify-release-keys`
+- [ ] Copy release notes into `dist/release/`: `make release-notes`
+- [ ] Upload provenance assets (manifests + signatures + public keys + notes): `make release-upload`
+  - If you are doing a fully manual release build (no CI artifacts), use: `make release-upload-all`
+
+**CDRL note**: downstream users should refit the `<APP>_…` env var prefix (e.g. `GRONINGEN_MINISIGN_KEY` → `MYAPI_MINISIGN_KEY`).
 
 ### Tagging
 
