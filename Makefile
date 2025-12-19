@@ -1,4 +1,5 @@
 .PHONY: all help bootstrap bootstrap-force hooks-ensure tools sync dependencies verify-dependencies version-bump lint test build build-all clean fmt version check-all precommit prepush run install test-cov
+.PHONY: sync-embedded-identity verify-embedded-identity
 .PHONY: release-clean release-download release-sign release-export-keys verify-release-keys checksums verify-checksums release-notes release-upload release-upload-provenance release-upload-all
 .PHONY: version-set version-bump-major version-bump-minor version-bump-patch release-check release-prepare release-build
 
@@ -161,10 +162,16 @@ RELEASE_TAG ?= v$(shell cat VERSION 2>/dev/null || echo "0.0.0")
 DIST_RELEASE ?= dist/release
 SIGNING_ENV_PREFIX ?= $(shell echo "$(BINARY_NAME)" | tr '[:lower:]-' '[:upper:]_')
 
+sync-embedded-identity: ## Sync embedded identity mirror from .fulmen/app.yaml
+	@./scripts/sync-embedded-identity.sh
+
+verify-embedded-identity: ## Verify embedded identity mirror is in sync
+	@./scripts/verify-embedded-identity.sh
+
 release-clean: ## Clean dist/release staging
 	@echo "🧹 Cleaning $(DIST_RELEASE)..."; rm -rf "$(DIST_RELEASE)"; mkdir -p "$(DIST_RELEASE)"; echo "✅ Cleaned"
 
-release-build: release-clean ## Build release artifacts into dist/release
+release-build: sync-embedded-identity release-clean ## Build release artifacts into dist/release
 	@echo "→ Building release artifacts for $(BINARY_NAME) v$(VERSION)..."
 	@mkdir -p "$(DIST_RELEASE)"
 	@GOOS=linux GOARCH=amd64 go build -ldflags="$(LDFLAGS)" -o "$(DIST_RELEASE)/$(BINARY_NAME)-linux-amd64" ./cmd/$(BINARY_NAME)
@@ -209,7 +216,7 @@ release-upload-provenance: verify-checksums verify-release-keys ## Upload manife
 release-upload-all: verify-checksums verify-release-keys ## Upload binaries + provenance (manual-only)
 	@./scripts/release-upload.sh "$(RELEASE_TAG)" "$(DIST_RELEASE)"
 
-build:  ## Build binary for current platform
+build: sync-embedded-identity ## Build binary for current platform
 	@echo "→ Building $(BINARY_NAME) v$(VERSION)..."
 	@go build -ldflags="$(LDFLAGS)" -o bin/$(BINARY_NAME) ./cmd/$(BINARY_NAME)
 	@echo "✓ Binary built: bin/$(BINARY_NAME)"
@@ -228,7 +235,7 @@ build-all:  ## Build multi-platform binaries and generate checksums (dev conveni
 version:  ## Print current version
 	@echo "$(VERSION)"
 
-test:  ## Run all tests
+test: sync-embedded-identity ## Run all tests
 	@echo "Running test suite..."
 	$(GOTEST) ./... -v
 
@@ -246,9 +253,10 @@ lint:  ## Run lint checks
 
 fmt:  ## Format code with goneat
 	@echo "Formatting with goneat..."; $(GONEAT_RESOLVE); $$GONEAT format
+	@$(MAKE) sync-embedded-identity
 	@echo "✅ Formatting completed"
 
-check-all: fmt lint test  ## Run all quality checks (ensures fmt, lint, test)
+check-all: fmt verify-embedded-identity lint test  ## Run all quality checks (ensures fmt, lint, test)
 	@echo "✅ All quality checks passed"
 
 precommit:  ## Run pre-commit hooks
