@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file. Older entri
 
 ## [Unreleased]
 
+## [0.1.8] - 2025-12-19
+
+### Added
+
+- **Embedded app identity**: Mirrors `.fulmen/app.yaml` into an embeddable path and registers it with gofulmen so distributed binaries can self-identify outside a repo checkout.
+- **Drift guardrails**: Added `make sync-embedded-identity` and `make verify-embedded-identity` and wired sync into `build`, `test`, and `release-build`.
+- **Standalone acceptance test**: Builds the binary, copies it into a temp directory, and verifies `version`/`--help` work without `.fulmen/app.yaml` present.
+
+### Changed
+
+- **Dependencies**: Upgraded gofulmen to v0.1.24 (Crucible v0.2.25 transitively).
+
 ## [0.1.7] - 2025-12-18
 
 ### Added

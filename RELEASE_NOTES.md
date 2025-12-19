@@ -4,12 +4,36 @@ This document tracks release notes for forge-workhorse-groningen releases.
 
 > **Convention**: Keep only the latest 3 releases here to prevent file bloat. Older releases are archived in `docs/releases/`.
 
+## [0.1.8] - 2025-12-19
+
+### Embedded App Identity for Standalone Binaries (Patch)
+
+**Release Type**: Patch Release (Artifact Contract + CDRL Reliability)
+**Status**: 🚧 Prepared
+
+#### Overview
+
+This patch makes the template’s built artifacts self-identifying by embedding app identity at build time. Basic CLI commands (like `version` and `--help`) now work when the binary is executed outside a repo checkout (e.g. copied to `/tmp` or installed on another machine) without requiring `.fulmen/app.yaml` to exist on disk.
+
+#### Key Changes
+
+- **Embedded identity fallback**: Mirrors `.fulmen/app.yaml` into an embeddable in-module path and registers it via gofulmen’s `RegisterEmbeddedIdentityYAML` so identity resolution works anywhere.
+- **Drift guardrails**: Added `sync-embedded-identity` and `verify-embedded-identity` targets and wired sync into `build`, `test`, and `release-build`.
+- **Conformance test**: Added an integration test that builds and runs the binary from a temp directory to prevent regressions.
+- **Dependencies**: gofulmen v0.1.24 (Crucible v0.2.25 transitively).
+
+#### Migration Notes
+
+No migration required for template consumers. CDRL consumers should continue editing `.fulmen/app.yaml` as the SSOT; the build tooling keeps the embedded mirror in sync.
+
+---
+
 ## [0.1.7] - 2025-12-18
 
 ### Release Signing Workflow Parity (Patch)
 
 **Release Type**: Patch Release (Release Process Reliability)
-**Status**: 🚧 Prepared
+**Status**: ✅ Released
 
 #### Overview
 
@@ -52,31 +76,6 @@ This patch reduces CDRL friction by removing template-name defaults from CLI sur
 - **Release workflow**: Asset upload uses `bin/*` to avoid baking in a template binary name.
 - **Dependencies**: gofulmen v0.1.22 (Crucible v0.2.23 transitively)
 - **Version**: Updated `VERSION` to 0.1.6
-
-#### Migration Notes
-
-No migration required for template consumers.
-
----
-
-## [0.1.5] - 2025-12-16
-
-### CI + Release Workflow Completion (Patch)
-
-**Release Type**: Patch Release (Dependency Update + CI/Release Tooling)
-**Status**: ✅ Released
-
-#### Overview
-
-This patch completes the gofulmen bump to v0.1.21 and hardens CI repository-root discovery in container runners. It also finalizes the release workflow and introduces manual signing helpers, plus aligns shell linting with goneat v0.3.21 `shfmt` args override.
-
-#### Key Changes
-
-- **Dependencies**: gofulmen v0.1.21 (Crucible v0.2.21 transitively)
-- **CI root boundary**: CI now exports `FULMEN_WORKSPACE_ROOT`, used as a boundary hint only under CI while still requiring repository markers (`go.mod`, `.git`)
-- **Release automation**: Tag-triggered GitHub Release publishing plus manual download/sign/upload helpers
-- **Tooling**: Configured `lint.shell.shfmt.args` (goneat v0.3.21) and reformatted scripts/hooks to match
-- **Version**: Updated `VERSION` to 0.1.5
 
 #### Migration Notes
 
