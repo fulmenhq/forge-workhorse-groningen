@@ -80,10 +80,25 @@ Follow the Fulmen “manifest-only” provenance pattern:
 - Sign manifests with minisign (primary) and optionally PGP
 - Ship trust anchors (public keys) with the release
 
-- [ ] Stage clean artifacts and generate manifests: `make release-build`
-  - This runs: `release-clean` → build cross-platform binaries into `dist/release/` → `make checksums`.
+- [ ] (Recommended) Download CI-built artifacts and (re)generate manifests:
+
+  ```bash
+  make release-clean
+  make release-download
+  make release-checksums
+  make release-verify-checksums
+  ```
+
+  - This path uses GitHub Release artifacts built in CI and avoids local build drift.
   - `make release-sign` does **not** build or download artifacts; it only signs existing `SHA256SUMS`/`SHA512SUMS`.
-- [ ] Validate manifests match artifacts: `make verify-checksums`
+
+- [ ] (Alternative) Build artifacts locally (fully manual release build):
+
+  ```bash
+  make release-build
+  make release-verify-checksums
+  ```
+
 - [ ] Sign manifests (minisign required; PGP optional):
 
   ```bash
@@ -92,11 +107,13 @@ Follow the Fulmen “manifest-only” provenance pattern:
   export GRONINGEN_MINISIGN_PUB=/path/to/groningen.pub
   export GRONINGEN_PGP_KEY_ID="security@fulmenhq.dev"   # optional (may be a signing subkey/fpr depending on key layout)
   export GRONINGEN_GPG_HOME=/path/to/gnupg-fulmenhq       # required if PGP_KEY_ID is set
-  make release-sign
+
+  # If you set RELEASE_TAG in another shell, you can omit it here.
+  make release-sign RELEASE_TAG=$RELEASE_TAG
   ```
 
 - [ ] Export public keys into `dist/release/`: `make release-export-keys`
-- [ ] Verify exported keys are public-only: `make verify-release-keys`
+- [ ] Verify exported keys are public-only: `make release-verify-keys`
 - [ ] Copy release notes into `dist/release/`: `make release-notes`
 - [ ] Upload provenance assets (manifests + signatures + public keys + notes): `make release-upload`
   - If you are doing a fully manual release build (no CI artifacts), use: `make release-upload-all`

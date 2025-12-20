@@ -1,6 +1,6 @@
 .PHONY: all help bootstrap bootstrap-force hooks-ensure tools sync dependencies verify-dependencies version-bump lint test build build-all clean fmt version check-all precommit prepush run install test-cov
 .PHONY: sync-embedded-identity verify-embedded-identity
-.PHONY: release-clean release-download release-sign release-export-keys verify-release-keys checksums verify-checksums release-notes release-upload release-upload-provenance release-upload-all
+.PHONY: release-clean release-download release-sign release-export-keys release-verify-keys release-checksums release-verify-checksums release-notes release-upload release-upload-provenance release-upload-all
 .PHONY: version-set version-bump-major version-bump-minor version-bump-patch release-check release-prepare release-build
 
 # Binary and version information
@@ -179,12 +179,17 @@ release-build: sync-embedded-identity release-clean ## Build release artifacts i
 	@GOOS=darwin GOARCH=arm64 go build -ldflags="$(LDFLAGS)" -o "$(DIST_RELEASE)/$(BINARY_NAME)-darwin-arm64" ./cmd/$(BINARY_NAME)
 	@GOOS=windows GOARCH=amd64 go build -ldflags="$(LDFLAGS)" -o "$(DIST_RELEASE)/$(BINARY_NAME)-windows-amd64.exe" ./cmd/$(BINARY_NAME)
 	@GOOS=linux GOARCH=arm64 go build -ldflags="$(LDFLAGS)" -o "$(DIST_RELEASE)/$(BINARY_NAME)-linux-arm64" ./cmd/$(BINARY_NAME)
-	@$(MAKE) checksums
+	@$(MAKE) release-checksums
 	@echo "✅ Release build complete"
 
-checksums: ## Generate SHA256SUMS and SHA512SUMS in dist/release
+# release-checksums generates checksum manifests inside dist/release.
+release-checksums: ## Generate SHA256SUMS and SHA512SUMS in dist/release
 	@echo "→ Generating checksum manifests in $(DIST_RELEASE)..."
 	@./scripts/generate-checksums.sh "$(DIST_RELEASE)" "$(BINARY_NAME)"
+
+# Deprecated alias (kept for one cycle).
+checksums: release-checksums ## Deprecated: use release-checksums
+	@:
 
 release-download: ## Download GitHub release assets (RELEASE_TAG=vX.Y.Z)
 	@./scripts/release-download.sh "$(RELEASE_TAG)" "$(DIST_RELEASE)"
@@ -195,25 +200,33 @@ release-sign: ## Sign checksum manifests (minisign required; PGP optional)
 release-export-keys: ## Export public signing keys into dist/release
 	@SIGNING_ENV_PREFIX="$(SIGNING_ENV_PREFIX)" SIGNING_APP_NAME="$(BINARY_NAME)" ./scripts/export-release-keys.sh "$(DIST_RELEASE)"
 
-verify-release-keys: ## Verify exported public keys are public-only
+release-verify-keys: ## Verify exported public keys are public-only
 	@if [ -f "$(DIST_RELEASE)/$(BINARY_NAME)-minisign.pub" ]; then ./scripts/verify-minisign-public-key.sh "$(DIST_RELEASE)/$(BINARY_NAME)-minisign.pub"; else echo "ℹ️  No minisign public key found (skipping)"; fi
 	@if [ -f "$(DIST_RELEASE)/fulmenhq-release-signing-key.asc" ]; then ./scripts/verify-public-key.sh "$(DIST_RELEASE)/fulmenhq-release-signing-key.asc"; else echo "ℹ️  No PGP public key found (skipping)"; fi
+
+# Deprecated alias (kept for one cycle).
+verify-release-keys: release-verify-keys ## Deprecated: use release-verify-keys
+	@:
 
 release-notes: ## Copy docs/releases/vX.Y.Z.md into dist/release
 	@notes_src="docs/releases/$(RELEASE_TAG).md"; notes_dst="$(DIST_RELEASE)/release-notes-$(RELEASE_TAG).md"; \
 	if [ ! -f "$$notes_src" ]; then echo "❌ Missing $$notes_src"; exit 1; fi; \
 	cp "$$notes_src" "$$notes_dst"; echo "✅ Copied $$notes_src → $$notes_dst"
 
-verify-checksums: ## Verify SHA256SUMS and SHA512SUMS against artifacts
+release-verify-checksums: ## Verify SHA256SUMS and SHA512SUMS against artifacts
 	@./scripts/verify-checksums.sh "$(DIST_RELEASE)"
+
+# Deprecated alias (kept for one cycle).
+verify-checksums: release-verify-checksums ## Deprecated: use release-verify-checksums
+	@:
 
 release-upload: release-upload-provenance ## Upload provenance assets to GitHub (RELEASE_TAG=vX.Y.Z)
 	@:
 
-release-upload-provenance: verify-checksums verify-release-keys ## Upload manifests, signatures, keys, notes
+release-upload-provenance: release-verify-checksums release-verify-keys ## Upload manifests, signatures, keys, notes
 	@./scripts/release-upload-provenance.sh "$(RELEASE_TAG)" "$(DIST_RELEASE)"
 
-release-upload-all: verify-checksums verify-release-keys ## Upload binaries + provenance (manual-only)
+release-upload-all: release-verify-checksums release-verify-keys ## Upload binaries + provenance (manual-only)
 	@./scripts/release-upload.sh "$(RELEASE_TAG)" "$(DIST_RELEASE)"
 
 build: sync-embedded-identity ## Build binary for current platform

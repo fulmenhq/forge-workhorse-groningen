@@ -4,12 +4,36 @@ This document tracks release notes for forge-workhorse-groningen releases.
 
 > **Convention**: Keep only the latest 3 releases here to prevent file bloat. Older releases are archived in `docs/releases/`.
 
+## [0.1.9] - 2025-12-20
+
+### Release Workflow Naming + CDRL Clarity (Patch)
+
+**Release Type**: Patch Release (Release UX + CDRL Reliability)
+**Status**: 🚧 Prepared
+
+#### Overview
+
+This patch smooths the release signing workflow by standardizing `release-*` target naming and clarifying the default provenance flow: download CI-built artifacts, regenerate checksum manifests locally, sign manifests, and upload only provenance assets (signatures, keys, manifests, notes). It also improves the CDRL guide with clearer guidance on what template-only files are safe to delete vs refit.
+
+#### Key Changes
+
+- **Release target naming**: Added `release-checksums`, `release-verify-checksums`, and `release-verify-keys` and kept deprecated aliases for one cycle.
+- **Release checklist defaults**: Recommended path is now `release-clean → release-download → release-checksums → release-verify-checksums → release-sign → release-export-keys → release-verify-keys → release-notes → release-upload`.
+- **CDRL guide**: Clarified template-only deletions, emphasized env prefix residue scanning, and listed common residue hotspots.
+- **Dependencies**: gofulmen v0.1.25 (Crucible v0.2.26 transitively).
+
+#### Migration Notes
+
+No migration required for template consumers.
+
+---
+
 ## [0.1.8] - 2025-12-19
 
 ### Embedded App Identity for Standalone Binaries (Patch)
 
 **Release Type**: Patch Release (Artifact Contract + CDRL Reliability)
-**Status**: 🚧 Prepared
+**Status**: ✅ Released
 
 #### Overview
 
@@ -47,35 +71,6 @@ This patch aligns Groningen’s manual release-signing workflow with Fulmen conv
 - **Validation**: `make verify-checksums` verifies checksum manifests; `make verify-release-keys` verifies exported keys are public-only.
 - **Upload safety**: `make release-upload` uploads provenance outputs only (manifests + signatures + public keys + release notes). Use `make release-upload-all` for fully manual artifact publishing.
 - **CI release workflow**: tag-triggered release publishing now uploads `dist/release/*`.
-
-#### Migration Notes
-
-No migration required for template consumers.
-
----
-
-## [0.1.6] - 2025-12-17
-
-### CDRL Hardening & Template Residue Cleanup (Patch)
-
-**Release Type**: Patch Release (CDRL Reliability + Docs)
-**Status**: ✅ Released
-
-#### Overview
-
-This patch reduces CDRL friction by removing template-name defaults from CLI surfaces and `/version` handler fallbacks, updating tests to be identity-driven, and making Makefile outputs more refit-friendly. It also refreshes the developer guide for accessing embedded Crucible docs via gofulmen.
-
-#### Key Changes
-
-- **CDRL hardening**:
-  - CLI root defaults are template-neutral and overwritten by app identity.
-  - `/version` fallback derives from the executable name rather than hardcoding `groningen`.
-  - Unit tests avoid asserting template-specific identity values.
-  - Makefile help banner and SBOM output use `$(BINARY_NAME)`.
-- **Docs**: Updated Crucible-docs access guide wording and version prerequisites.
-- **Release workflow**: Asset upload uses `bin/*` to avoid baking in a template binary name.
-- **Dependencies**: gofulmen v0.1.22 (Crucible v0.2.23 transitively)
-- **Version**: Updated `VERSION` to 0.1.6
 
 #### Migration Notes
 

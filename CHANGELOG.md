@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file. Older entri
 
 ## [Unreleased]
 
+## [0.1.9] - 2025-12-20
+
+### Added
+
+- **CDRL guide clarity**: Documented template-only files to delete vs refit, plus common residue hotspots.
+
+### Changed
+
+- **Release target naming**: Standardized `release-*` prefixes for dist/release checksum and key verification targets (kept deprecated aliases).
+- **Release checklist**: Default signing flow is now download CI artifacts, regenerate manifests, verify, sign, and upload provenance only.
+- **Dependencies**: Upgraded gofulmen to v0.1.25 (Crucible v0.2.26 transitively).
+
 ## [0.1.8] - 2025-12-19
 
 ### Added
