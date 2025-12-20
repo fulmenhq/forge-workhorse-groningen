@@ -83,9 +83,11 @@ If you’re starting a new product/repo from this template, reset the template v
 echo "0.1.0" > VERSION
 ```
 
-#### Optional: Purge Template-Only Release Docs
+#### Optional: Purge Template-Only Docs
 
-Template release artifacts are safe to delete during CDRL:
+After CDRL, you can delete template-only release history and template overview docs.
+
+**Safe to delete (template history):**
 
 ```bash
 rm -f CHANGELOG.md
@@ -93,22 +95,37 @@ rm -f RELEASE_NOTES.md
 rm -rf docs/releases/
 ```
 
-You may also choose to remove template-specific docs and ADRs and replace them with your own:
+**Often safe to delete/replace (template-specific docs):**
 
 ```bash
 rm -f docs/groningen-overview.md
 rm -rf docs/architecture/decisions/
 ```
 
+**Edit (do not delete) if you keep the Fulmen workflow:**
+
+- `RELEASE_CHECKLIST.md` (update release/signing conventions)
+- `REPOSITORY_SAFETY_PROTOCOLS.md` (adapt to your org)
+- `AGENTS.md` and `MAINTAINERS.md` (replace maintainers/agent roster)
+- `.github/workflows/*` and `scripts/*` (only if you keep the automated release process)
+
 #### Recommended: Verify No Remaining Template References
 
-After refit, confirm you don’t still reference template identifiers:
+After refit, confirm you don’t still reference template identifiers (including env prefix residue):
 
 ```bash
-rg -n "groningen" --glob '*.{go,md,yaml,yml,json,mod,sum}' --glob 'Makefile'
+rg -n "groningen|GRONINGEN_" --glob '*.{go,md,yaml,yml,json,mod,sum}' --glob 'Makefile'
 ```
 
 If the output is non-empty, update the remaining references (common places: CLI help text, tests, Make targets, config comments).
+
+#### Common Residue Hotspots
+
+Based on downstream CDRL runjournals, these are the most common places where template strings persist even after updating `.fulmen/app.yaml`:
+
+- CLI root command `Short`/`Long` strings (help output)
+- `envinfo` command output headers
+- Tests and comments referencing `GRONINGEN_*` env vars
 
 #### 3.3 Update Environment Variables
 
