@@ -1,5 +1,5 @@
 .PHONY: all help bootstrap bootstrap-force hooks-ensure tools sync dependencies verify-dependencies version-bump lint test build build-all clean fmt version check-all precommit prepush run install test-cov
-.PHONY: sync-embedded-identity verify-embedded-identity
+.PHONY: sync-embedded-identity verify-embedded-identity test-standalone-binary
 .PHONY: release-clean release-download release-sign release-export-keys release-verify-keys release-checksums release-verify-checksums release-notes release-upload release-upload-provenance release-upload-all
 .PHONY: version-set version-bump-major version-bump-minor version-bump-patch release-check release-prepare release-build
 .PHONY: license-inventory license-save license-audit update-licenses
@@ -69,7 +69,7 @@ GONEAT_RESOLVE = \
 all: fmt test
 
 help:  ## Show this help message
-	@printf '%s\n' '$(BINARY_NAME) - Available Make Targets' '' 'Required targets (Makefile Standard):' '  help            - Show this help message' '  bootstrap       - Install external tools (sfetch, goneat) and dependencies' '  bootstrap-force - Force reinstall external tools' '  tools           - Verify external tools are available' '  dependencies    - Generate SBOM for supply-chain security' '  lint            - Run lint/format/style checks' '  test            - Run all tests' '  build           - Build distributable artifacts' '  build-all       - Build multi-platform binaries' '  clean           - Remove build artifacts and caches' '  fmt             - Format code' '  version         - Print current version' '  version-set     - Set version to specific value' '  version-bump-major - Bump major version' '  version-bump-minor - Bump minor version' '  version-bump-patch - Bump patch version' '  release-check   - Run release checklist validation' '  release-prepare - Prepare for release' '  release-build   - Build release artifacts' '  check-all       - Run all quality checks (fmt, lint, test)' '  precommit       - Run pre-commit hooks' '  prepush         - Run pre-push hooks (includes license-audit)' '' 'License compliance:' '  license-audit   - Audit for forbidden licenses (GPL, LGPL, etc.)' '  license-inventory - Generate CSV inventory of dependency licenses' '  license-save    - Save third-party license texts' '  update-licenses - Update license inventory and texts' '' 'Additional targets:' '  run             - Run server in development mode' '  test-cov        - Run tests with coverage report' ''
+	@printf '%s\n' '$(BINARY_NAME) - Available Make Targets' '' 'Required targets (Makefile Standard):' '  help            - Show this help message' '  bootstrap       - Install external tools (sfetch, goneat) and dependencies' '  bootstrap-force - Force reinstall external tools' '  tools           - Verify external tools are available' '  dependencies    - Generate SBOM for supply-chain security' '  lint            - Run lint/format/style checks' '  test            - Run all tests' '  build           - Build distributable artifacts' '  build-all       - Build multi-platform binaries' '  clean           - Remove build artifacts and caches' '  fmt             - Format code' '  version         - Print current version' '  version-set     - Set version to specific value' '  version-bump-major - Bump major version' '  version-bump-minor - Bump minor version' '  version-bump-patch - Bump patch version' '  release-check   - Run release checklist validation' '  release-prepare - Prepare for release' '  release-build   - Build release artifacts' '  check-all       - Run all quality checks (fmt, lint, test)' '  precommit       - Run pre-commit hooks' '  prepush         - Run pre-push hooks (includes license-audit)' '' 'License compliance:' '  license-audit   - Audit for forbidden licenses (GPL, LGPL, etc.)' '  license-inventory - Generate CSV inventory of dependency licenses' '  license-save    - Save third-party license texts' '  update-licenses - Update license inventory and texts' '' 'Additional targets:' '  run             - Run server in development mode' '  test-cov        - Run tests with coverage report' '  test-standalone-binary - Verify binary runs outside repo' ''
 
 bootstrap:  ## Install external tools (sfetch, goneat) and dependencies
 	@echo "Installing external tools..."
@@ -234,6 +234,13 @@ build: sync-embedded-identity ## Build binary for current platform
 	@echo "→ Building $(BINARY_NAME) v$(VERSION)..."
 	@go build -ldflags="$(LDFLAGS)" -o bin/$(BINARY_NAME) ./cmd/$(BINARY_NAME)
 	@echo "✓ Binary built: bin/$(BINARY_NAME)"
+
+test-standalone-binary: build  ## Verify built binary runs outside repo (catches embedded asset issues)
+	@echo "→ Standalone binary check (outside repo)..."
+	@cp "bin/$(BINARY_NAME)" "/tmp/$(BINARY_NAME)"
+	@"/tmp/$(BINARY_NAME)" version >/dev/null
+	@"/tmp/$(BINARY_NAME)" --help >/dev/null
+	@echo "✅ Standalone binary check passed"
 
 build-all:  ## Build multi-platform binaries and generate checksums (dev convenience; prefer release-build for releases)
 	@echo "→ Building for multiple platforms..."
