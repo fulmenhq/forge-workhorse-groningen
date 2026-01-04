@@ -4,7 +4,7 @@
 
 **Date:** 2025-11-15
 
-**Deciders:** @forge-architect, @3leapsdave
+**Deciders:** @3leapsdave (devlead)
 
 **Context:** Feature Brief 007 (gofulmen/config Integration)
 

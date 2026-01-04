@@ -2,6 +2,7 @@
 .PHONY: sync-embedded-identity verify-embedded-identity
 .PHONY: release-clean release-download release-sign release-export-keys release-verify-keys release-checksums release-verify-checksums release-notes release-upload release-upload-provenance release-upload-all
 .PHONY: version-set version-bump-major version-bump-minor version-bump-patch release-check release-prepare release-build
+.PHONY: license-inventory license-save license-audit update-licenses
 
 # Binary and version information
 BINARY_NAME := groningen
@@ -68,7 +69,7 @@ GONEAT_RESOLVE = \
 all: fmt test
 
 help:  ## Show this help message
-	@printf '%s\n' '$(BINARY_NAME) - Available Make Targets' '' 'Required targets (Makefile Standard):' '  help            - Show this help message' '  bootstrap       - Install external tools (sfetch, goneat) and dependencies' '  bootstrap-force - Force reinstall external tools' '  tools           - Verify external tools are available' '  dependencies    - Generate SBOM for supply-chain security' '  lint            - Run lint/format/style checks' '  test            - Run all tests' '  build           - Build distributable artifacts' '  build-all       - Build multi-platform binaries' '  clean           - Remove build artifacts and caches' '  fmt             - Format code' '  version         - Print current version' '  version-set     - Set version to specific value' '  version-bump-major - Bump major version' '  version-bump-minor - Bump minor version' '  version-bump-patch - Bump patch version' '  release-check   - Run release checklist validation' '  release-prepare - Prepare for release' '  release-build   - Build release artifacts' '  check-all       - Run all quality checks (fmt, lint, test)' '  precommit       - Run pre-commit hooks (check-all)' '  prepush         - Run pre-push hooks (check-all)' '' 'Additional targets:' '  run             - Run server in development mode' '  test-cov        - Run tests with coverage report' ''
+	@printf '%s\n' '$(BINARY_NAME) - Available Make Targets' '' 'Required targets (Makefile Standard):' '  help            - Show this help message' '  bootstrap       - Install external tools (sfetch, goneat) and dependencies' '  bootstrap-force - Force reinstall external tools' '  tools           - Verify external tools are available' '  dependencies    - Generate SBOM for supply-chain security' '  lint            - Run lint/format/style checks' '  test            - Run all tests' '  build           - Build distributable artifacts' '  build-all       - Build multi-platform binaries' '  clean           - Remove build artifacts and caches' '  fmt             - Format code' '  version         - Print current version' '  version-set     - Set version to specific value' '  version-bump-major - Bump major version' '  version-bump-minor - Bump minor version' '  version-bump-patch - Bump patch version' '  release-check   - Run release checklist validation' '  release-prepare - Prepare for release' '  release-build   - Build release artifacts' '  check-all       - Run all quality checks (fmt, lint, test)' '  precommit       - Run pre-commit hooks' '  prepush         - Run pre-push hooks (includes license-audit)' '' 'License compliance:' '  license-audit   - Audit for forbidden licenses (GPL, LGPL, etc.)' '  license-inventory - Generate CSV inventory of dependency licenses' '  license-save    - Save third-party license texts' '  update-licenses - Update license inventory and texts' '' 'Additional targets:' '  run             - Run server in development mode' '  test-cov        - Run tests with coverage report' ''
 
 bootstrap:  ## Install external tools (sfetch, goneat) and dependencies
 	@echo "Installing external tools..."
@@ -276,9 +277,52 @@ precommit:  ## Run pre-commit hooks
 	@echo "Running pre-commit validation..."; $(GONEAT_RESOLVE); $$GONEAT format; $$GONEAT assess --check --categories format,lint --fail-on critical
 	@echo "✅ Pre-commit checks passed"
 
-prepush:  ## Run pre-push hooks
+prepush: license-audit  ## Run pre-push hooks (includes license audit)
 	@echo "Running pre-push validation..."; $(GONEAT_RESOLVE); $$GONEAT format; $$GONEAT assess --check --categories format,lint,security --fail-on high
 	@echo "✅ Pre-push checks passed"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# License compliance
+# ─────────────────────────────────────────────────────────────────────────────
+
+license-inventory:  ## Generate CSV inventory of dependency licenses
+	@echo "🔎 Generating license inventory (CSV)..."
+	@mkdir -p docs/licenses dist/reports
+	@if ! command -v go-licenses >/dev/null 2>&1; then \
+		echo "Installing go-licenses..."; \
+		go install github.com/google/go-licenses@latest; \
+	fi
+	go-licenses csv ./... > docs/licenses/inventory.csv
+	@echo "✅ Wrote docs/licenses/inventory.csv"
+
+license-save:  ## Save third-party license texts
+	@echo "📄 Saving third-party license texts..."
+	@rm -rf docs/licenses/third-party
+	@if ! command -v go-licenses >/dev/null 2>&1; then \
+		echo "Installing go-licenses..."; \
+		go install github.com/google/go-licenses@latest; \
+	fi
+	go-licenses save ./... --save_path=docs/licenses/third-party
+	@echo "✅ Saved third-party licenses to docs/licenses/third-party"
+
+license-audit:  ## Audit for forbidden licenses
+	@echo "🧪 Auditing dependency licenses..."
+	@mkdir -p dist/reports
+	@if ! command -v go-licenses >/dev/null 2>&1; then \
+		echo "Installing go-licenses..."; \
+		go install github.com/google/go-licenses@latest; \
+	fi
+	@forbidden='GPL|LGPL|AGPL|MPL|CDDL'; \
+	out=$$(go-licenses csv ./...); \
+	echo "$$out" > dist/reports/license-inventory.csv; \
+	if echo "$$out" | grep -E "$$forbidden" >/dev/null; then \
+		echo "❌ Forbidden license detected. See dist/reports/license-inventory.csv"; \
+		exit 1; \
+	else \
+		echo "✅ No forbidden licenses detected"; \
+	fi
+
+update-licenses: license-inventory license-save  ## Update license inventory and texts
 
 clean:  ## Clean build artifacts and reports
 	@echo "Cleaning artifacts..."

@@ -123,9 +123,22 @@ If the output is non-empty, update the remaining references (common places: CLI 
 
 Based on downstream CDRL runjournals, these are the most common places where template strings persist even after updating `.fulmen/app.yaml`:
 
-- CLI root command `Short`/`Long` strings (help output)
-- `envinfo` command output headers
-- Tests and comments referencing `GRONINGEN_*` env vars
+| File                      | Location              | What to Change                                                                    |
+| ------------------------- | --------------------- | --------------------------------------------------------------------------------- |
+| `internal/cmd/envinfo.go` | Line ~22              | `"=== Groningen Environment Information ==="` → use app identity or your app name |
+| `internal/cmd/root.go`    | `Short`/`Long` fields | Root command description in help output                                           |
+| `internal/cmd/*.go`       | Various               | Any hardcoded "groningen" in command descriptions                                 |
+| `internal/cmd/*_test.go`  | Test assertions       | References to `GRONINGEN_*` env vars                                              |
+
+**Tip**: The `envinfo` header is a common miss. Update it to use the app identity dynamically:
+
+```go
+// Before (hardcoded)
+observability.CLILogger.Info("=== Groningen Environment Information ===")
+
+// After (dynamic)
+observability.CLILogger.Info(fmt.Sprintf("=== %s Environment Information ===", identity.BinaryName))
+```
 
 #### 3.3 Update Environment Variables
 

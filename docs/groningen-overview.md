@@ -1,7 +1,9 @@
 ---
 title: "Groningen Template Overview"
 description: "Comprehensive overview of the Groningen workhorse application template"
-author: "Forge Architect"
+author: "devlead"
+author_of_record: "Dave Thompson (https://github.com/3leapsdave)"
+supervised_by: "@3leapsdave"
 date: "2025-11-06"
 last_updated: "2025-11-06"
 status: "active"
@@ -421,9 +423,8 @@ customHistogram := telemetry.Histogram("custom_duration_seconds")
 ## Contact & Support
 
 - **Maintainer**: @3leapsdave (Dave Thompson)
-- **AI Co-Maintainer**: ⚙️ Forge Architect (@forge-architect)
+- **Agentic Roles**: See [Role Catalog](../config/agentic/roles/README.md)
 - **Issues**: [GitHub Issues](https://github.com/fulmenhq/forge-workhorse-groningen/issues)
-- **Mattermost**: `#agents-groningen` (provisioning in progress)
 
 ---
 
