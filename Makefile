@@ -154,8 +154,8 @@ release-prepare:  ## Prepare for release (tests, version bump)
 # - Generates SHA256SUMS and SHA512SUMS manifests
 # - Signs manifests only (do not sign each artifact)
 # - Supports env vars in two forms:
-#     MINISIGN_KEY / PGP_KEY_ID / GPG_HOME (generic)
-#     <APP>_MINISIGN_KEY / <APP>_PGP_KEY_ID / <APP>_GPG_HOME (preferred)
+#     MINISIGN_KEY / PGP_KEY_ID / GPG_HOMEDIR (generic)
+#     <APP>_MINISIGN_KEY / <APP>_PGP_KEY_ID / <APP>_GPG_HOMEDIR (preferred)
 #   where <APP> defaults to $(SIGNING_ENV_PREFIX)
 # ─────────────────────────────────────────────────────────────────────────────
 
