@@ -4,6 +4,38 @@ This document tracks release notes for forge-workhorse-groningen releases.
 
 > **Convention**: Keep only the latest 3 releases here to prevent file bloat. Older releases are archived in `docs/releases/`.
 
+## [0.1.10] - 2026-01-17
+
+### Dependency Updates for Clone Readiness (Patch)
+
+**Release Type**: Patch Release (Dependency Freshness)
+**Status**: 🚧 Prepared
+
+#### Overview
+
+This patch brings all FulmenHQ and third-party dependencies up to their latest stable versions in preparation for cloning groningen as a base for new applications. No breaking changes; purely dependency version bumps with verified quality gates.
+
+#### Key Changes
+
+- **gofulmen**: v0.3.0 → v0.3.1 (Crucible v0.4.2 → v0.4.3 transitively)
+- **chi**: v5.2.3 → v5.2.4 (HTTP router)
+- **cobra**: v1.10.1 → v1.10.2 (CLI framework)
+- **zap**: v1.27.0 → v1.27.1 (structured logging)
+
+#### Quality Gates
+
+All quality gates verified:
+
+- `make lint` - 0 issues, 100% health
+- `make test` - All 8 packages passing
+- `make build` - Clean build
+
+#### Migration Notes
+
+No migration required. Drop-in compatible for existing consumers.
+
+---
+
 ## [0.1.9] - 2025-12-20
 
 ### Release Workflow Naming + CDRL Clarity (Patch)
@@ -49,31 +81,3 @@ This patch makes the template’s built artifacts self-identifying by embedding 
 #### Migration Notes
 
 No migration required for template consumers. CDRL consumers should continue editing `.fulmen/app.yaml` as the SSOT; the build tooling keeps the embedded mirror in sync.
-
----
-
-## [0.1.7] - 2025-12-18
-
-### Release Signing Workflow Parity (Patch)
-
-**Release Type**: Patch Release (Release Process Reliability)
-**Status**: ✅ Released
-
-#### Overview
-
-This patch aligns Groningen’s manual release-signing workflow with Fulmen conventions: artifacts stage in `dist/release/`, checksum manifests are dual-generated (`SHA256SUMS` + `SHA512SUMS`), and signing is manifest-only (minisign primary, optional PGP). It also fixes the CI release publishing workflow to upload the staged `dist/release/*` set.
-
-#### Key Changes
-
-- **Release artifacts staging**: `make release-build` stages cross-platform binaries in `dist/release/` and generates checksum manifests.
-- **Manifest-only signing**: `make release-sign` signs `SHA256SUMS`/`SHA512SUMS` with minisign and optionally PGP.
-- **Trust anchors**: `make release-export-keys` exports minisign and PGP public keys into `dist/release/`.
-- **Validation**: `make verify-checksums` verifies checksum manifests; `make verify-release-keys` verifies exported keys are public-only.
-- **Upload safety**: `make release-upload` uploads provenance outputs only (manifests + signatures + public keys + release notes). Use `make release-upload-all` for fully manual artifact publishing.
-- **CI release workflow**: tag-triggered release publishing now uploads `dist/release/*`.
-
-#### Migration Notes
-
-No migration required for template consumers.
-
----
