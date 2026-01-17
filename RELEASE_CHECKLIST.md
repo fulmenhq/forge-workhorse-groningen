@@ -108,6 +108,10 @@ Follow the Fulmen “manifest-only” provenance pattern:
   export GRONINGEN_PGP_KEY_ID="security@fulmenhq.dev"   # optional (may be a signing subkey/fpr depending on key layout)
   export GRONINGEN_GPG_HOMEDIR=/path/to/gnupg-fulmenhq    # required if PGP_KEY_ID is set
 
+  # Ensure GPG can prompt for passphrase in this terminal
+  export GPG_TTY="$(tty)"
+  gpg-connect-agent updatestartuptty /bye
+
   # If you set RELEASE_TAG in another shell, you can omit it here.
   make release-sign RELEASE_TAG=$RELEASE_TAG
   ```
