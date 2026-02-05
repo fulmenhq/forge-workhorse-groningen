@@ -10,8 +10,10 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"go.uber.org/zap"
 
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/config"
 	apperrors "github.com/fulmenhq/forge-workhorse-groningen/internal/errors"
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/server/auth"
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/server/handlers"
 	servermw "github.com/fulmenhq/forge-workhorse-groningen/internal/server/middleware"
 )
@@ -22,41 +24,86 @@ type Server struct {
 	server *http.Server
 	host   string
 	port   int
+
+	readTimeout  time.Duration
+	writeTimeout time.Duration
+	idleTimeout  time.Duration
+
+	authConfig config.DataPlaneAuthConfig
 }
 
-// New creates a new HTTP server instance
-func New(host string, port int) *Server {
+type Option func(*Server)
+
+func WithTimeouts(cfg config.ServerConfig) Option {
+	return func(s *Server) {
+		if cfg.ReadTimeout > 0 {
+			s.readTimeout = cfg.ReadTimeout
+		}
+		if cfg.WriteTimeout > 0 {
+			s.writeTimeout = cfg.WriteTimeout
+		}
+		if cfg.IdleTimeout > 0 {
+			s.idleTimeout = cfg.IdleTimeout
+		}
+	}
+}
+
+func WithDataPlaneAuth(cfg config.DataPlaneAuthConfig) Option {
+	return func(s *Server) {
+		s.authConfig = cfg
+	}
+}
+
+// New creates a new HTTP server instance.
+func New(host string, port int, opts ...Option) *Server {
 	r := chi.NewRouter()
+
+	s := &Server{
+		router:       r,
+		host:         host,
+		port:         port,
+		readTimeout:  30 * time.Second,
+		writeTimeout: 30 * time.Second,
+		idleTimeout:  120 * time.Second,
+	}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(s)
+		}
+	}
 
 	// Standard chi middleware
 	r.Use(middleware.RealIP)
 
-	// Our custom middleware in correct order (RequestID → Metrics → Logging → Recovery)
+	// Our middleware order (RequestID → Metrics → Auth → Recovery)
 	r.Use(servermw.RequestID)      // 1. Request ID (early for correlation)
 	r.Use(servermw.RequestMetrics) // 2. Metrics (measure everything)
-	r.Use(servermw.ErrorHandler)   // 3. Error handling (after metrics)
-	r.Use(servermw.Recovery)       // 4. Panic recovery (outermost)
+
+	// 3. Starter auth (optional)
+	if s.authConfig.Enabled && len(s.authConfig.RoutePolicy) == 0 {
+		s.authConfig.RoutePolicy = []config.RoutePolicyRule{
+			{Prefix: "/health", Category: string(auth.RouteCategoryPublic)},
+			{Prefix: "/version", Category: string(auth.RouteCategoryPublic)},
+			{Prefix: "/metrics", Category: string(auth.RouteCategoryConditional)},
+			{Prefix: "/", Category: string(auth.RouteCategoryProtected)},
+		}
+	}
+	r.Use(auth.Middleware(s.authConfig, HandleError))
+
+	r.Use(servermw.Recovery)
 
 	// Chi's Recoverer is redundant since we have our own Recovery middleware
 	// r.Use(middleware.Recoverer)
 
 	// Standardized error responses using centralized HandleError
 	r.NotFound(func(w http.ResponseWriter, req *http.Request) {
-		// Use gofulmen error envelope for 404 - correlation ID extracted from request context
 		err := apperrors.NewNotFoundError("The requested resource was not found")
 		HandleError(w, req, err)
 	})
 	r.MethodNotAllowed(func(w http.ResponseWriter, req *http.Request) {
-		// Use gofulmen error envelope for 405 - correlation ID extracted from request context
 		err := apperrors.NewMethodNotAllowedError("The requested method is not allowed for this resource")
 		HandleError(w, req, err)
 	})
-
-	s := &Server{
-		router: r,
-		host:   host,
-		port:   port,
-	}
 
 	// Ensure handlers use the centralized error responder
 	handlers.SetHTTPErrorResponder(HandleError)
@@ -74,9 +121,9 @@ func (s *Server) Start() error {
 	s.server = &http.Server{
 		Addr:         addr,
 		Handler:      s.router,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  120 * time.Second,
+		ReadTimeout:  s.readTimeout,
+		WriteTimeout: s.writeTimeout,
+		IdleTimeout:  s.idleTimeout,
 	}
 
 	observability.ServerLogger.Info("Starting HTTP server",

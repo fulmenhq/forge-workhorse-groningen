@@ -6,12 +6,22 @@ All notable changes to this project will be documented in this file. Older entri
 
 ## [Unreleased]
 
-## [0.1.10] - 2026-01-17
+## [0.1.10] - 2026-01-29
+
+### Added
+
+- **Full JSONSchema flavor support**: Schema validation now supports all major drafts (Draft-04, Draft-06, Draft-07, Draft 2019-09, Draft 2020-12) with auto-detection from `$schema` field.
+- **Schema meta-validation**: Validate schemas themselves against their meta-schemas before deployment.
+- **Schema validation documentation**: Added `docs/schema-validation.md` guide and `schemas/README.md` for CDRL users.
+- **Multi-flavor test fixtures**: Added test schemas for all supported drafts in `testdata/schemas/`.
 
 ### Changed
 
-- **Dependencies**: Upgraded gofulmen v0.3.0 → v0.3.1 (Crucible v0.4.2 → v0.4.3 transitively).
-- **Dependencies**: Upgraded chi v5.2.3 → v5.2.4, cobra v1.10.1 → v1.10.2, zap v1.27.0 → v1.27.1.
+- **Dependencies**: Upgraded gofulmen v0.3.0 → v0.3.2 (Crucible v0.4.2 → v0.4.9 transitively).
+- **Dependencies**: Upgraded go 1.25.1 → 1.25.5, golang.org/x/text v0.30.0 → v0.33.0.
+- **Dependencies**: Upgraded goneat v0.3.21 → v0.5.1.
+- **Bootstrap**: Skip goneat install if already present (use FORCE=1 to reinstall).
+- **README**: Removed version pinning from dependency list (go.mod is authoritative).
 
 ### Quality
 

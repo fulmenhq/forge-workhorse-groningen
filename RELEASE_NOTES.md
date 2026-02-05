@@ -4,35 +4,52 @@ This document tracks release notes for forge-workhorse-groningen releases.
 
 > **Convention**: Keep only the latest 3 releases here to prevent file bloat. Older releases are archived in `docs/releases/`.
 
-## [0.1.10] - 2026-01-17
+## [0.1.10] - 2026-01-29
 
-### Dependency Updates for Clone Readiness (Patch)
+### Full JSONSchema Flavor Support (Patch)
 
-**Release Type**: Patch Release (Dependency Freshness)
+**Release Type**: Patch Release (Schema Validation + CDRL Capability)
 **Status**: 🚧 Prepared
 
 #### Overview
 
-This patch brings all FulmenHQ and third-party dependencies up to their latest stable versions in preparation for cloning groningen as a base for new applications. No breaking changes; purely dependency version bumps with verified quality gates.
+This release expands schema validation capabilities for CDRL users by exposing full JSONSchema draft support. The gofulmen/crucible dependency bump brings validation for all major JSONSchema drafts (Draft-04 through Draft 2020-12), enabling downstream applications to consume external schemas in any format without configuration.
+
+#### Key Feature: Multi-Draft Schema Validation
+
+CDRL users now inherit:
+
+- **Auto-detected drafts**: The `$schema` field determines validation behavior automatically
+- **All major drafts**: Draft-04, Draft-06, Draft-07, Draft 2019-09, Draft 2020-12
+- **Meta-validation**: Validate your schemas are well-formed before deployment
+- **Documented patterns**: See `docs/schema-validation.md` and `schemas/README.md`
 
 #### Key Changes
 
-- **gofulmen**: v0.3.0 → v0.3.1 (Crucible v0.4.2 → v0.4.3 transitively)
-- **chi**: v5.2.3 → v5.2.4 (HTTP router)
-- **cobra**: v1.10.1 → v1.10.2 (CLI framework)
-- **zap**: v1.27.0 → v1.27.1 (structured logging)
+- **gofulmen**: v0.3.0 → v0.3.2 (Crucible v0.4.2 → v0.4.9 transitively)
+- **go**: 1.25.1 → 1.25.5
+- **goneat**: v0.3.21 → v0.5.1
+- **golang.org/x/text**: v0.30.0 → v0.33.0
+- **Bootstrap**: Skip goneat install if already present (use FORCE=1 to reinstall)
+
+#### New Files
+
+- `docs/schema-validation.md` - User-facing schema validation guide
+- `schemas/README.md` - Schema directory documentation
+- `testdata/schemas/*.schema.json` - Test fixtures for all 5 supported drafts
+- `internal/config/schema_flavors_test.go` - Integration tests demonstrating multi-flavor support
 
 #### Quality Gates
 
 All quality gates verified:
 
 - `make lint` - 0 issues, 100% health
-- `make test` - All 8 packages passing
+- `make test` - All packages passing (including new schema flavor tests)
 - `make build` - Clean build
 
 #### Migration Notes
 
-No migration required. Drop-in compatible for existing consumers.
+No migration required. Drop-in compatible for existing consumers. CDRL users gain new schema capabilities automatically.
 
 ---
 

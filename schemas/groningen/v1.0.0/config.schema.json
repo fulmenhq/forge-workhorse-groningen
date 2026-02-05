@@ -30,6 +30,83 @@
         }
       }
     },
+    "controlPlane": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "host": {
+          "type": "string"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "basePath": {
+          "type": "string"
+        },
+        "bearerToken": {
+          "type": "string"
+        }
+      }
+    },
+    "dataPlaneAuth": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "disabled",
+            "bearerToken",
+            "basicAuth"
+          ]
+        },
+        "bearerToken": {
+          "type": "string"
+        },
+        "basicAuth": {
+          "type": "object",
+          "properties": {
+            "username": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            }
+          }
+        },
+        "routePolicy": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "prefix": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string",
+                "enum": [
+                  "deny",
+                  "public",
+                  "conditional",
+                  "protected"
+                ]
+              }
+            },
+            "required": [
+              "prefix",
+              "category"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    },
     "logging": {
       "type": "object",
       "properties": {

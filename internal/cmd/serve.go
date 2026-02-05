@@ -2,7 +2,10 @@ package cmd
 
 import (
 	"context"
+	"errors"
+	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/fulmenhq/gofulmen/signals"
@@ -10,9 +13,11 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
 
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/config"
 	errwrap "github.com/fulmenhq/forge-workhorse-groningen/internal/errors"
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/observability"
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/server"
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/server/control"
 	"github.com/fulmenhq/forge-workhorse-groningen/internal/server/handlers"
 )
 
@@ -110,8 +115,19 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 			configName: identity.ConfigName,
 		})
 
-		// Create server
-		srv := server.New(serverHost, serverPort)
+		var cfg config.Config
+		if err := viper.Unmarshal(&cfg); err != nil {
+			return errwrap.WrapConfigInvalid(cmd.Context(), err, "failed to unmarshal configuration")
+		}
+
+		// Create data plane server
+		if err := validateDataPlaneAuthConfig(cfg.DataPlaneAuth); err != nil {
+			return errwrap.WrapConfigInvalid(cmd.Context(), err, "invalid data plane auth configuration")
+		}
+		srv := server.New(cfg.Server.Host, cfg.Server.Port,
+			server.WithTimeouts(cfg.Server),
+			server.WithDataPlaneAuth(cfg.DataPlaneAuth),
+		)
 
 		// Set app identity for handlers
 		handlers.SetAppIdentity(identity)
@@ -120,6 +136,33 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 		shutdownTimeout := viper.GetDuration("server.shutdown_timeout")
 		if shutdownTimeout == 0 {
 			shutdownTimeout = 10 * time.Second
+		}
+
+		// Control plane setup
+		var controlSrv *control.Server
+		if cfg.ControlPlane.Enabled {
+			if err := validateControlPlaneConfig(cfg.Server.Port, cfg.ControlPlane); err != nil {
+				return errwrap.WrapConfigInvalid(cmd.Context(), err, "invalid control plane configuration")
+			}
+
+			basePath := strings.TrimSpace(cfg.ControlPlane.BasePath)
+			if basePath == "" {
+				basePath = "/control"
+			}
+			if !strings.HasPrefix(basePath, "/") {
+				basePath = "/" + basePath
+			}
+			cfg.ControlPlane.BasePath = basePath
+
+			// Use gofulmen signals handler for dispatch and rate limiting.
+			// Auth is enforced by control plane middleware.
+			signalHandler := signals.NewHTTPHandler(signals.HTTPConfig{
+				RateLimit:              10,
+				RateBurst:              5,
+				AllowedSignals:         []string{"SIGHUP", "SIGTERM"},
+				AllowClientGracePeriod: false,
+			})
+			controlSrv = control.New(cfg.ControlPlane, signalHandler)
 		}
 
 		// Register graceful shutdown handlers (LIFO order - last registered, first executed)
@@ -134,7 +177,7 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 			return nil
 		})
 
-		// Handler 2: Shutdown HTTP server (executed first)
+		// Handler 2: Shutdown data plane HTTP server
 		signals.OnShutdown(func(ctx context.Context) error {
 			observability.ServerLogger.Info("Shutting down HTTP server...")
 			shutdownCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)
@@ -147,6 +190,19 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 			observability.ServerLogger.Info("HTTP server stopped gracefully")
 			return nil
 		})
+
+		// Handler 3: Shutdown control plane HTTP server
+		if controlSrv != nil {
+			signals.OnShutdown(func(ctx context.Context) error {
+				observability.ServerLogger.Info("Shutting down control plane HTTP server...")
+				shutdownCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)
+				defer cancel()
+				if err := controlSrv.Shutdown(shutdownCtx); err != nil {
+					return errwrap.WrapInternal(ctx, err, "control plane shutdown failed")
+				}
+				return nil
+			})
+		}
 
 		// Register config reload handler (SIGHUP)
 		signals.OnReload(func(ctx context.Context) error {
@@ -184,32 +240,111 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 				zap.Error(err))
 		}
 
-		// Start server in background goroutine
-		errChan := make(chan error, 1)
+		// Start servers and signal listener in background
+		errChan := make(chan error, 3)
 		go func() {
 			observability.ServerLogger.Info("Starting HTTP server...",
 				zap.String("host", serverHost),
 				zap.Int("port", serverPort))
-			if err := srv.Start(); err != nil && err != http.ErrServerClosed {
-				errChan <- err
+			err := srv.Start()
+			if err == http.ErrServerClosed {
+				err = nil
 			}
+			errChan <- err
 		}()
+
+		if controlSrv != nil {
+			go func() {
+				err := controlSrv.Start()
+				if err == http.ErrServerClosed {
+					err = nil
+				}
+				errChan <- err
+			}()
+		}
 
 		// Start signal listener in background
 		go func() {
-			if err := signals.Listen(cmd.Context()); err != nil {
-				observability.ServerLogger.Error("Signal handler error", zap.Error(err))
-				errChan <- err
-			}
+			err := signals.Listen(cmd.Context())
+			// Always forward result so serve can exit cleanly on shutdown.
+			errChan <- err
 		}()
 
-		// Wait for error or shutdown completion
+		// Wait for first completion/error.
 		if err := <-errChan; err != nil {
 			return errwrap.WrapInternal(cmd.Context(), err, "server error")
 		}
-
 		return nil
 	},
+}
+
+func validateControlPlaneConfig(dataPlanePort int, cfg config.ControlPlaneConfig) error {
+	host := strings.TrimSpace(cfg.Host)
+	if host == "" {
+		host = "127.0.0.1"
+	}
+
+	if cfg.Port <= 0 || cfg.Port > 65535 {
+		return errors.New("controlPlane.port must be between 1 and 65535")
+	}
+	if cfg.Port == dataPlanePort {
+		return errors.New("controlPlane.port must differ from server.port")
+	}
+
+	if !isLoopbackHost(host) {
+		if strings.TrimSpace(cfg.BearerToken) == "" {
+			return errors.New("controlPlane.bearerToken is required when controlPlane.host is not loopback")
+		}
+	}
+	return nil
+}
+
+func validateDataPlaneAuthConfig(cfg config.DataPlaneAuthConfig) error {
+	if !cfg.Enabled {
+		return nil
+	}
+
+	mode := strings.TrimSpace(cfg.Mode)
+	switch mode {
+	case "bearerToken":
+		if strings.TrimSpace(cfg.BearerToken) == "" {
+			return errors.New("dataPlaneAuth.bearerToken is required when dataPlaneAuth.mode is bearerToken")
+		}
+	case "basicAuth":
+		if strings.TrimSpace(cfg.BasicAuth.Username) == "" || strings.TrimSpace(cfg.BasicAuth.Password) == "" {
+			return errors.New("dataPlaneAuth.basicAuth.username and dataPlaneAuth.basicAuth.password are required when dataPlaneAuth.mode is basicAuth")
+		}
+	default:
+		return errors.New("dataPlaneAuth.mode must be bearerToken or basicAuth when dataPlaneAuth.enabled is true")
+	}
+
+	for _, rule := range cfg.RoutePolicy {
+		cat := strings.TrimSpace(rule.Category)
+		switch cat {
+		case "deny", "public", "conditional", "protected":
+			// ok
+		default:
+			if cat != "" {
+				return errors.New("invalid dataPlaneAuth.routePolicy category: " + cat)
+			}
+		}
+	}
+
+	return nil
+}
+
+func isLoopbackHost(host string) bool {
+	host = strings.TrimSpace(host)
+	if host == "" {
+		return true
+	}
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback()
+	}
+	return false
 }
 
 func init() {

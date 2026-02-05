@@ -101,8 +101,8 @@ forge-workhorse-groningen/
 
 ### Dependencies
 
-- **gofulmen v0.1.21** - Fulmen helper library (config, logging, telemetry, schema validation, pathfinder)
-- **goneat v0.3.16** - Tooling for formatting, hooks, and assessment
+- **gofulmen** - Fulmen helper library (config, logging, telemetry, schema validation, pathfinder)
+- **goneat** - Tooling for formatting, hooks, and assessment
 - **sfetch** - Trust anchor for bootstrapping tools
 - **cobra** - CLI framework (Fulmen standard for Go)
 - **chi** - HTTP router (lightweight, idiomatic)
@@ -175,7 +175,7 @@ GRONINGEN_PORT=8080
 GRONINGEN_HOST=localhost
 GRONINGEN_LOG_LEVEL=info
 GRONINGEN_METRICS_PORT=9090
-GRONINGEN_ADMIN_TOKEN=your-secret-token  # For admin endpoint
+GRONINGEN_CONTROLPLANE_BEARERTOKEN=your-secret-token  # For control plane endpoint (see below)
 # ... see .env.example for full list
 ```
 
@@ -350,22 +350,33 @@ kill -HUP $(pgrep groningen)
 # Some changes may still require restart (e.g., port changes)
 ```
 
-### Admin Endpoint (Optional)
+### Control Plane (Optional)
 
-Enable remote signal injection via HTTP (for Kubernetes sidecars, etc.):
+Enable operational control endpoints on a dedicated control plane server (separate from the primary API surface):
+
+```yaml
+controlPlane:
+  enabled: true
+  host: 127.0.0.1
+  port: 9091
+  basePath: /control
+  bearerToken: your-secret-token
+```
 
 ```bash
-# Enable by setting admin token
-export GRONINGEN_ADMIN_TOKEN="your-secret-token"
 groningen serve
 
-# Send signal via HTTP
-curl -X POST http://localhost:8080/admin/signal \
-  -H "Authorization: Bearer $GRONINGEN_ADMIN_TOKEN" \
+# Trigger config reload (SIGHUP)
+curl -X POST http://127.0.0.1:9091/control/config/reload \
+  -H "Authorization: Bearer your-secret-token"
+
+# Inject a signal (allowed: SIGHUP, SIGTERM)
+curl -X POST http://127.0.0.1:9091/control/signal \
+  -H "Authorization: Bearer your-secret-token" \
   -d '{"signal": "SIGHUP"}'
 ```
 
-**Security**: Only expose admin endpoint on internal networks. Use strong token. Consider IP allowlisting.
+**Security**: Keep control plane bound to loopback by default. If you bind to a non-loopback interface, configure a strong bearer token and restrict network access.
 
 ### Exit Codes
 

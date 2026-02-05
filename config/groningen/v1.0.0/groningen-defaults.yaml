@@ -23,6 +23,37 @@ server:
   # Graceful shutdown timeout
 
   shutdown_timeout: 10s
+# Control Plane (Operational Endpoints)
+#
+# A dedicated loopback-bound server for operational control endpoints.
+# Safe-by-default: binds to 127.0.0.1 and requires explicit configuration to expose.
+controlPlane:
+  enabled: true
+  host: 127.0.0.1
+  port: 9091
+  basePath: /control
+  # Bearer token required if host is not loopback (enforced at runtime)
+  bearerToken: ""
+# Data Plane Auth (Starter Framework)
+#
+# Optional auth for the primary API surface. Disabled by default.
+dataPlaneAuth:
+  enabled: false
+  mode: disabled # disabled | bearerToken | basicAuth
+  bearerToken: ""
+  basicAuth:
+    username: ""
+    password: ""
+  # Default route policy only applies when auth is enabled.
+  routePolicy:
+    - prefix: /health
+      category: public
+    - prefix: /version
+      category: public
+    - prefix: /metrics
+      category: conditional
+    - prefix: /
+      category: protected
 # Logging Configuration
 
 # Supports progressive profiles per Fulmen Forge Workhorse Standard:

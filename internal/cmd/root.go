@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/fulmenhq/gofulmen/appidentity"
 	"github.com/fulmenhq/gofulmen/foundry"
@@ -133,6 +134,8 @@ func initConfig() {
 
 	// Read in environment variables with prefix from app identity
 	viper.SetEnvPrefix(appIdentity.EnvPrefix)
+	// Support nested keys (e.g. server.port -> GRONINGEN_SERVER_PORT)
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
 	// If a config file is found, read it in
@@ -182,4 +185,19 @@ func setDefaults() {
 	// Debug defaults
 	viper.SetDefault("debug.enabled", false)
 	viper.SetDefault("debug.pprof_enabled", false)
+
+	// Control plane defaults
+	viper.SetDefault("controlPlane.enabled", true)
+	viper.SetDefault("controlPlane.host", "127.0.0.1")
+	viper.SetDefault("controlPlane.port", 9091)
+	viper.SetDefault("controlPlane.basePath", "/control")
+	viper.SetDefault("controlPlane.bearerToken", "")
+
+	// Data plane auth defaults (disabled by default)
+	viper.SetDefault("dataPlaneAuth.enabled", false)
+	viper.SetDefault("dataPlaneAuth.mode", "disabled")
+	viper.SetDefault("dataPlaneAuth.bearerToken", "")
+	viper.SetDefault("dataPlaneAuth.basicAuth.username", "")
+	viper.SetDefault("dataPlaneAuth.basicAuth.password", "")
+	// Route policy defaults are set in server wiring when auth is enabled.
 }
