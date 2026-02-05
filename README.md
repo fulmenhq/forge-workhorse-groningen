@@ -175,7 +175,7 @@ GRONINGEN_PORT=8080
 GRONINGEN_HOST=localhost
 GRONINGEN_LOG_LEVEL=info
 GRONINGEN_METRICS_PORT=9090
-GRONINGEN_CONTROLPLANE_BEARERTOKEN=your-secret-token  # For control plane endpoint (see below)
+GRONINGEN_CONTROL_PLANE_BEARER_TOKEN=your-secret-token  # For control plane endpoint (see below)
 # ... see .env.example for full list
 ```
 
@@ -512,6 +512,7 @@ See [MAINTAINERS.md](MAINTAINERS.md) for governance and project team information
 ### Documentation
 
 - [Template Overview](docs/groningen-overview.md) - Comprehensive guide to template architecture and components
+- [Architecture Decisions (ADRs)](docs/decisions/README.md) - Key design decisions and trade-offs for CDRL users
 - [Developer Handbook](docs/development/README.md) - Development setup and workflows
 - [Development Guides](docs/development/) - Focused guides for specific topics
 

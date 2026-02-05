@@ -88,16 +88,20 @@ func findProjectRoot() (string, error) {
 	return rootPath, nil
 }
 
-// EnvVarSpec defines environment variable mappings for config fields
-// following the pattern: {PREFIX}{NAME} maps to config path
-type EnvVarSpec = gfconfig.EnvVarSpec
-
 // Environment variable types
 const (
 	EnvString = gfconfig.EnvString
 	EnvInt    = gfconfig.EnvInt
 	EnvBool   = gfconfig.EnvBool
 )
+
+type LoadOptions struct {
+	// UserPaths optionally overrides the set of config file paths checked for the
+	// user override layer.
+	//
+	// If empty, Load uses XDG-derived paths based on app identity.
+	UserPaths []string
+}
 
 // Load loads configuration using the three-layer pattern:
 // 1. Crucible defaults from config/groningen-defaults.yaml
@@ -106,6 +110,12 @@ const (
 //
 // This function is safe to call multiple times (e.g., for config reload)
 func Load(ctx context.Context, runtimeOverrides ...map[string]any) (*Config, error) {
+	return LoadWithOptions(ctx, LoadOptions{}, runtimeOverrides...)
+}
+
+// LoadWithOptions loads configuration like Load but allows overriding certain
+// discovery behaviors (e.g., user config paths).
+func LoadWithOptions(ctx context.Context, loadOpts LoadOptions, runtimeOverrides ...map[string]any) (*Config, error) {
 	// Get app identity if not already loaded
 	if appIdentity == nil {
 		identity, err := appid.Get(ctx)
@@ -127,20 +137,31 @@ func Load(ctx context.Context, runtimeOverrides ...map[string]any) (*Config, err
 	// Defaults are in config/groningen/v1.0.0/groningen-defaults.yaml
 	// Using absolute paths ensures this works from any working directory
 	catalog := schema.NewCatalog(filepath.Join(projectRoot, "schemas"))
+	userPaths := loadOpts.UserPaths
+	if len(userPaths) == 0 {
+		userPaths = getUserConfigPaths()
+	}
+
 	opts := gfconfig.LayeredConfigOptions{
 		Category:     "groningen",
 		Version:      "v1.0.0",
 		DefaultsFile: "groningen-defaults.yaml",
 		SchemaID:     "groningen/v1.0.0/config",
-		UserPaths:    getUserConfigPaths(),
+		UserPaths:    userPaths,
 		Catalog:      catalog,
 		DefaultsRoot: filepath.Join(projectRoot, "config"), // Absolute path for Layer 2 template
 	}
 
-	// Load environment variable overrides
-	envOverrides, err := gfconfig.LoadEnvOverrides(getEnvSpecs())
+	// Load environment variable overrides (canonical + aliases) with conflict diagnostics.
+	envReport, err := gfconfig.LoadEnvOverridesWithEnvelopeAndReport(EnvVarSpecs(appIdentity), "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to load environment overrides: %w", err)
+	}
+	envOverrides := envReport.Overrides
+	for _, c := range envReport.Conflicts {
+		fmt.Printf("WARN: Environment variable conflict detected: %s=%s (canonical) vs %s=%s (alias); using %s\n",
+			c.CanonicalName, c.Canonical, c.AliasName, c.Alias, c.ChosenName,
+		)
 	}
 
 	// Combine environment overrides with runtime overrides
@@ -220,44 +241,22 @@ func getUserConfigPaths() []string {
 	return paths
 }
 
-// getEnvSpecs returns environment variable specifications for config mapping
-// Maps {PREFIX}{NAME} environment variables to config paths
-func getEnvSpecs() []EnvVarSpec {
+// getEnvSpecs is retained for backward compatibility with older tests.
+// Prefer EnvVarMappings/EnvVarSpecs.
+func getEnvSpecs() []gfconfig.EnvVarSpec {
 	if appIdentity == nil {
-		return []EnvVarSpec{}
+		return nil
 	}
 
-	prefix := appIdentity.EnvPrefix
-	if !strings.HasSuffix(prefix, "_") {
-		prefix += "_"
+	mappings := EnvVarMappings(appIdentity)
+	specs := make([]gfconfig.EnvVarSpec, 0, len(mappings))
+	for _, m := range mappings {
+		// Keep the historical short alias as the spec name for the basic loader.
+		name := m.Canonical
+		if len(m.Aliases) > 0 {
+			name = m.Aliases[0]
+		}
+		specs = append(specs, gfconfig.EnvVarSpec{Name: name, Path: m.Path, Type: m.Type})
 	}
-
-	return []EnvVarSpec{
-		// Server config
-		{Name: prefix + "HOST", Path: []string{"server", "host"}, Type: EnvString},
-		{Name: prefix + "PORT", Path: []string{"server", "port"}, Type: EnvInt},
-		// Duration fields are parsed as strings and converted by mapstructure decode hook
-		{Name: prefix + "READ_TIMEOUT", Path: []string{"server", "read_timeout"}, Type: EnvString},
-		{Name: prefix + "WRITE_TIMEOUT", Path: []string{"server", "write_timeout"}, Type: EnvString},
-		{Name: prefix + "IDLE_TIMEOUT", Path: []string{"server", "idle_timeout"}, Type: EnvString},
-		{Name: prefix + "SHUTDOWN_TIMEOUT", Path: []string{"server", "shutdown_timeout"}, Type: EnvString},
-
-		// Logging config (REQUIRED per Workhorse Standard)
-		{Name: prefix + "LOG_LEVEL", Path: []string{"logging", "level"}, Type: EnvString},
-		{Name: prefix + "LOG_PROFILE", Path: []string{"logging", "profile"}, Type: EnvString},
-
-		// Metrics config
-		{Name: prefix + "METRICS_ENABLED", Path: []string{"metrics", "enabled"}, Type: EnvBool},
-		{Name: prefix + "METRICS_PORT", Path: []string{"metrics", "port"}, Type: EnvInt},
-
-		// Health config
-		{Name: prefix + "HEALTH_ENABLED", Path: []string{"health", "enabled"}, Type: EnvBool},
-
-		// Debug config
-		{Name: prefix + "DEBUG_ENABLED", Path: []string{"debug", "enabled"}, Type: EnvBool},
-		{Name: prefix + "DEBUG_PPROF_ENABLED", Path: []string{"debug", "pprof_enabled"}, Type: EnvBool},
-
-		// Workers
-		{Name: prefix + "WORKERS", Path: []string{"workers"}, Type: EnvInt},
-	}
+	return specs
 }

@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"sort"
+	"strings"
 
+	"github.com/fulmenhq/forge-workhorse-groningen/internal/config"
+	gfconfig "github.com/fulmenhq/gofulmen/config"
 	"github.com/fulmenhq/gofulmen/foundry"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -72,6 +76,54 @@ var doctorCmd = &cobra.Command{
 		observability.CLILogger.Info("[5/5] Checking environment... ✅ "+runtime.GOOS+"/"+runtime.GOARCH,
 			zap.String("os", runtime.GOOS),
 			zap.String("arch", runtime.GOARCH))
+
+		observability.CLILogger.Info("")
+		observability.CLILogger.Info("Environment Checks")
+		observability.CLILogger.Info("==================")
+		observability.CLILogger.Info("")
+
+		loadOpts := config.LoadOptions{}
+		if strings.TrimSpace(cfgFile) != "" {
+			loadOpts.UserPaths = []string{cfgFile}
+		}
+		cfg, cfgErr := config.LoadWithOptions(cmd.Context(), loadOpts)
+		if cfgErr != nil {
+			observability.CLILogger.Warn("⚠️  Could not load layered config", zap.Error(cfgErr))
+			allChecks = false
+		} else {
+			if cfg.ControlPlane.Enabled {
+				if err := validateControlPlaneConfig(cfg.Server.Port, cfg.ControlPlane); err != nil {
+					observability.CLILogger.Error("✗ Control plane configuration invalid", zap.Error(err))
+					allChecks = false
+				} else {
+					observability.CLILogger.Info("✓ Control plane configuration valid")
+				}
+			}
+
+			if cfg.DataPlaneAuth.Enabled {
+				if err := validateDataPlaneAuthConfig(cfg.DataPlaneAuth); err != nil {
+					observability.CLILogger.Error("✗ Data plane auth enabled but misconfigured", zap.Error(err))
+					allChecks = false
+				} else {
+					observability.CLILogger.Info("✓ Data plane auth configuration valid")
+				}
+			}
+		}
+
+		specs := config.EnvVarSpecs(identity)
+		report, repErr := gfconfig.LoadEnvOverridesWithReport(specs)
+		if repErr != nil {
+			observability.CLILogger.Warn("⚠️  Could not analyze environment variables", zap.Error(repErr))
+			allChecks = false
+		} else {
+			if len(report.Conflicts) > 0 {
+				observability.CLILogger.Warn("⚠️  Environment variable conflicts detected:")
+				sort.Slice(report.Conflicts, func(i, j int) bool { return report.Conflicts[i].CanonicalName < report.Conflicts[j].CanonicalName })
+				for _, c := range report.Conflicts {
+					observability.CLILogger.Warn(fmt.Sprintf("  %s=%s (canonical) vs %s=%s (alias) -> using %s", c.CanonicalName, c.Canonical, c.AliasName, c.Alias, c.ChosenName))
+				}
+			}
+		}
 
 		observability.CLILogger.Info("")
 		if allChecks {

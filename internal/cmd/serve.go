@@ -76,32 +76,52 @@ Signal Handling:
 
 The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		runtimeOverrides := map[string]any{}
+		serverOverrides := map[string]any{}
+		if cmd.Flags().Changed("host") {
+			serverOverrides["host"] = serverHost
+		}
+		if cmd.Flags().Changed("port") {
+			serverOverrides["port"] = serverPort
+		}
+		if len(serverOverrides) > 0 {
+			runtimeOverrides["server"] = serverOverrides
+		}
+
+		loadOpts := config.LoadOptions{}
+		if strings.TrimSpace(cfgFile) != "" {
+			loadOpts.UserPaths = []string{cfgFile}
+		}
+
+		cfg, err := config.LoadWithOptions(cmd.Context(), loadOpts, runtimeOverrides)
+		if err != nil {
+			return errwrap.WrapConfigInvalid(cmd.Context(), err, "failed to load configuration")
+		}
+
 		// Get app identity for telemetry namespace
 		identity := GetAppIdentity()
 		namespace := identity.TelemetryNamespace()
 
 		// Initialize server logger with namespace
-		logLevel := viper.GetString("logging.level")
-		observability.InitServerLogger(identity.BinaryName, logLevel, namespace)
+		observability.InitServerLogger(identity.BinaryName, cfg.Logging.Level, namespace)
 
-		metricsPort := viper.GetInt("metrics.port")
-		if metricsPort == 0 {
-			metricsPort = 9090
-		}
+		metricsPort := cfg.Metrics.Port
 
 		// Initialize metrics with namespace
-		if err := observability.InitMetrics(identity.BinaryName, metricsPort, namespace); err != nil {
-			observability.ServerLogger.Error("Failed to initialize metrics",
-				zap.Error(err))
-			return errwrap.WrapInternal(cmd.Context(), err, "metrics initialization failed")
+		if cfg.Metrics.Enabled {
+			if err := observability.InitMetrics(identity.BinaryName, metricsPort, namespace); err != nil {
+				observability.ServerLogger.Error("Failed to initialize metrics",
+					zap.Error(err))
+				return errwrap.WrapInternal(cmd.Context(), err, "metrics initialization failed")
+			}
 		}
 
 		observability.ServerLogger.Info("Initializing server",
 			zap.String("service", identity.BinaryName),
 			zap.String("namespace", namespace),
 			zap.String("version", versionInfo.Version),
-			zap.String("host", serverHost),
-			zap.Int("port", serverPort),
+			zap.String("host", cfg.Server.Host),
+			zap.Int("port", cfg.Server.Port),
 			zap.Int("metrics_port", metricsPort))
 
 		// Initialize health manager
@@ -114,11 +134,6 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 			envPrefix:  identity.EnvPrefix,
 			configName: identity.ConfigName,
 		})
-
-		var cfg config.Config
-		if err := viper.Unmarshal(&cfg); err != nil {
-			return errwrap.WrapConfigInvalid(cmd.Context(), err, "failed to unmarshal configuration")
-		}
 
 		// Create data plane server
 		if err := validateDataPlaneAuthConfig(cfg.DataPlaneAuth); err != nil {
@@ -133,7 +148,7 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 		handlers.SetAppIdentity(identity)
 
 		// Get shutdown timeout from config
-		shutdownTimeout := viper.GetDuration("server.shutdown_timeout")
+		shutdownTimeout := cfg.Server.ShutdownTimeout
 		if shutdownTimeout == 0 {
 			shutdownTimeout = 10 * time.Second
 		}
@@ -208,20 +223,11 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 		signals.OnReload(func(ctx context.Context) error {
 			observability.ServerLogger.Info("Received SIGHUP: attempting config reload")
 
-			// Attempt to reload configuration
-			if err := viper.ReadInConfig(); err != nil {
-				if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-					observability.ServerLogger.Info("No config file found - using defaults and environment variables")
-					return nil
-				}
-				observability.ServerLogger.Error("Failed to reload config file",
-					zap.String("file", viper.ConfigFileUsed()),
-					zap.Error(err))
+			if _, err := config.LoadWithOptions(ctx, loadOpts, runtimeOverrides); err != nil {
+				observability.ServerLogger.Error("Config reload failed", zap.Error(err))
 				return errwrap.WrapConfigInvalid(ctx, err, "config reload failed")
 			}
-
-			observability.ServerLogger.Info("Configuration reloaded successfully",
-				zap.String("file", viper.ConfigFileUsed()))
+			observability.ServerLogger.Info("Configuration reloaded successfully")
 
 			// TODO: Add hooks for components that need to react to config changes
 			// - Update log levels if changed
@@ -244,8 +250,8 @@ The server will cleanly shut down the HTTP server and flush logs on shutdown.`,
 		errChan := make(chan error, 3)
 		go func() {
 			observability.ServerLogger.Info("Starting HTTP server...",
-				zap.String("host", serverHost),
-				zap.Int("port", serverPort))
+				zap.String("host", cfg.Server.Host),
+				zap.Int("port", cfg.Server.Port))
 			err := srv.Start()
 			if err == http.ErrServerClosed {
 				err = nil
