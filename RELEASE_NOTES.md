@@ -4,52 +4,52 @@ This document tracks release notes for forge-workhorse-groningen releases.
 
 > **Convention**: Keep only the latest 3 releases here to prevent file bloat. Older releases are archived in `docs/releases/`.
 
-## [0.1.10] - 2026-01-29
+## [0.1.10] - 2026-02-05
 
-### Full JSONSchema Flavor Support (Patch)
+### Control Plane, Starter Auth, Env Var Ergonomics, Diagnostics, Schema Flavors, ADRs
 
-**Release Type**: Patch Release (Schema Validation + CDRL Capability)
-**Status**: 🚧 Prepared
+**Release Type**: Minor Feature Release (6 feature briefs)
+**Status**: ✅ Released
 
 #### Overview
 
-This release expands schema validation capabilities for CDRL users by exposing full JSONSchema draft support. The gofulmen/crucible dependency bump brings validation for all major JSONSchema drafts (Draft-04 through Draft 2020-12), enabling downstream applications to consume external schemas in any format without configuration.
+The largest feature release since v0.1.0. Adds control plane/data plane separation, starter authentication, ergonomic environment variables with conflict detection, enhanced diagnostics, full JSONSchema multi-draft support, and Architecture Decision Records.
 
-#### Key Feature: Multi-Draft Schema Validation
-
-CDRL users now inherit:
-
-- **Auto-detected drafts**: The `$schema` field determines validation behavior automatically
-- **All major drafts**: Draft-04, Draft-06, Draft-07, Draft 2019-09, Draft 2020-12
-- **Meta-validation**: Validate your schemas are well-formed before deployment
-- **Documented patterns**: See `docs/schema-validation.md` and `schemas/README.md`
+- **Control plane split**: Dedicated operational server on `127.0.0.1:9091` (loopback by default). Discovery, signal injection, config reload endpoints. Bearer token auth required for non-loopback.
+- **Starter auth framework**: Optional data plane auth with `bearerToken`/`basicAuth` modes and route policy (`deny`/`public`/`conditional`/`protected`). Disabled by default.
+- **Env var ergonomics**: Both canonical (`GRONINGEN_SERVER_PORT`) and alias (`GRONINGEN_PORT`) env var names. Conflict detection with warnings. Alias takes precedence.
+- **Enhanced diagnostics**: Env var mapping table in `envinfo`, conflict/auth checks in `doctor`, sensitive value masking.
+- **Full JSONSchema flavor support**: Draft-04 through Draft 2020-12 with auto-detection from `$schema` field.
+- **ADR documentation**: 4 Architecture Decision Records in `docs/decisions/`.
 
 #### Key Changes
 
-- **gofulmen**: v0.3.0 → v0.3.2 (Crucible v0.4.2 → v0.4.9 transitively)
+- **gofulmen**: v0.3.1 → v0.3.3 (Crucible v0.4.3 → v0.4.9 transitively)
 - **go**: 1.25.1 → 1.25.5
-- **goneat**: v0.3.21 → v0.5.1
+- **goneat**: v0.3.21 → v0.5.2
 - **golang.org/x/text**: v0.30.0 → v0.33.0
-- **Bootstrap**: Skip goneat install if already present (use FORCE=1 to reinstall)
+- **Bootstrap**: Skip goneat install if already present (use `FORCE=1` to reinstall)
 
-#### New Files
+#### New Packages
 
-- `docs/schema-validation.md` - User-facing schema validation guide
-- `schemas/README.md` - Schema directory documentation
-- `testdata/schemas/*.schema.json` - Test fixtures for all 5 supported drafts
-- `internal/config/schema_flavors_test.go` - Integration tests demonstrating multi-flavor support
+- `internal/server/control/` — Control plane server, routes, handlers, middleware
+- `internal/server/auth/` — Data plane auth middleware, route policy
+- `internal/config/envvars.go` — Env var mapping with canonical/alias support
 
 #### Quality Gates
 
 All quality gates verified:
 
-- `make lint` - 0 issues, 100% health
-- `make test` - All packages passing (including new schema flavor tests)
-- `make build` - Clean build
+- `make fmt` — Clean
+- `make lint` — 0 issues
+- `make test` — All packages passing
+- `make build` — Clean build
 
 #### Migration Notes
 
-No migration required. Drop-in compatible for existing consumers. CDRL users gain new schema capabilities automatically.
+No breaking changes. Drop-in compatible. Control plane enabled by default on loopback; data plane auth disabled by default; existing env vars continue as aliases.
+
+Full details: [`docs/releases/v0.1.10.md`](docs/releases/v0.1.10.md)
 
 ---
 

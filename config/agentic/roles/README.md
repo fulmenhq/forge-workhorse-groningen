@@ -13,6 +13,7 @@ Baseline role prompts for AI agent sessions in the FulmenHQ ecosystem.
 | [Information Architect](infoarch.yaml) | `infoarch` | agentic    | Documentation, schemas                       |
 | [Enterprise Architect](entarch.yaml)   | `entarch`  | governance | Cross-repo coordination, ecosystem alignment |
 | [CI/CD Automation](cicd.yaml)          | `cicd`     | automation | Pipelines, GitHub Actions                    |
+| [Product Marketing](prodmktg.yaml)     | `prodmktg` | marketing  | Release notes, README updates, messaging     |
 | [Security Review](secrev.yaml)         | `secrev`   | review     | Security analysis, vulnerabilities           |
 | [Data Engineering](dataeng.yaml)       | `dataeng`  | agentic    | Database design, data pipelines              |
 

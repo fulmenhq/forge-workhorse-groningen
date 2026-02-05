@@ -6,22 +6,24 @@ All notable changes to this project will be documented in this file. Older entri
 
 ## [Unreleased]
 
-## [0.1.10] - 2026-01-29
+## [0.1.10] - 2026-02-05
 
 ### Added
 
-- **Full JSONSchema flavor support**: Schema validation now supports all major drafts (Draft-04, Draft-06, Draft-07, Draft 2019-09, Draft 2020-12) with auto-detection from `$schema` field.
-- **Schema meta-validation**: Validate schemas themselves against their meta-schemas before deployment.
-- **Schema validation documentation**: Added `docs/schema-validation.md` guide and `schemas/README.md` for CDRL users.
-- **Multi-flavor test fixtures**: Added test schemas for all supported drafts in `testdata/schemas/`.
+- **Control plane / data plane split**: Dedicated operational server on separate port (default `127.0.0.1:9091`). Endpoints: discovery, signal injection, config reload. Bearer token auth required for non-loopback. Code at `internal/server/control/`.
+- **Starter auth framework**: Optional data plane auth with `bearerToken` and `basicAuth` modes. Route policy system (`deny`/`public`/`conditional`/`protected`). Disabled by default. Code at `internal/server/auth/`.
+- **Env var canonical/alias ergonomics**: Both nested canonical (`GRONINGEN_SERVER_PORT`) and short alias (`GRONINGEN_PORT`) env var names. Conflict detection with warnings. Alias precedence. Code at `internal/config/envvars.go`.
+- **Enhanced doctor/envinfo diagnostics**: Env var mapping table in `envinfo`, conflict detection in `doctor`, sensitive value masking for TOKEN/SECRET/PASSWORD/KEY patterns.
+- **Full JSONSchema flavor support**: Schema validation supports all major drafts (Draft-04, Draft-06, Draft-07, Draft 2019-09, Draft 2020-12) with auto-detection from `$schema` field. Meta-validation, test fixtures, and documentation.
+- **ADR documentation structure**: `docs/decisions/` with index, template, and 4 initial ADRs covering control plane split, control plane auth, data plane auth, and schema validation.
 
 ### Changed
 
-- **Dependencies**: Upgraded gofulmen v0.3.0 → v0.3.2 (Crucible v0.4.2 → v0.4.9 transitively).
+- **Dependencies**: Upgraded gofulmen v0.3.1 → v0.3.3 (Crucible v0.4.3 → v0.4.9 transitively).
 - **Dependencies**: Upgraded go 1.25.1 → 1.25.5, golang.org/x/text v0.30.0 → v0.33.0.
-- **Dependencies**: Upgraded goneat v0.3.21 → v0.5.1.
+- **Dependencies**: Upgraded goneat v0.3.21 → v0.5.2.
 - **Bootstrap**: Skip goneat install if already present (use FORCE=1 to reinstall).
-- **README**: Removed version pinning from dependency list (go.mod is authoritative).
+- **README**: Added control plane, data plane auth, env var ergonomics, and ADR sections.
 
 ### Quality
 

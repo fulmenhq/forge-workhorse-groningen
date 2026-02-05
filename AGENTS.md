@@ -30,6 +30,7 @@ This repository uses the FulmenHQ agentic role catalog. Load role prompts from t
 | `devlead`  | [devlead.yaml](config/agentic/roles/devlead.yaml)   | Implementation, architecture, feature work |
 | `devrev`   | [devrev.yaml](config/agentic/roles/devrev.yaml)     | Code review, bug finding, four-eyes audit  |
 | `infoarch` | [infoarch.yaml](config/agentic/roles/infoarch.yaml) | Documentation, schemas, standards          |
+| `prodmktg` | [prodmktg.yaml](config/agentic/roles/prodmktg.yaml) | Release notes, README updates, messaging   |
 | `cicd`     | [cicd.yaml](config/agentic/roles/cicd.yaml)         | Pipelines, builds, automation              |
 
 See [Role Catalog](config/agentic/roles/README.md) for full definitions.
@@ -39,6 +40,7 @@ See [Role Catalog](config/agentic/roles/README.md) for full definitions.
 - **Default to `devlead`** for most implementation work
 - **Use `devrev`** for reviewing code written by others (enables four-eyes model)
 - **Use `infoarch`** for documentation-focused work
+- **Use `prodmktg`** for release notes, README updates, and benefit-driven documentation
 - **Use `cicd`** for pipeline and automation work
 
 ## Commit Attribution

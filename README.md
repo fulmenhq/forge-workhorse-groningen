@@ -9,9 +9,11 @@ Named after the Groningen horse breed from the Netherlands, renowned for strengt
 `forge-workhorse-groningen` is a **Level 2 template** in the Fulmen ecosystem—a production-ready starter that provides:
 
 - ✅ HTTP server with standard endpoints (`/health`, `/version`, `/metrics`)
+- ✅ Control plane / data plane split with dedicated operational server
+- ✅ Optional data plane auth (bearer token, basic auth, route policy)
 - ✅ CLI with required subcommands (serve, version, health, envinfo, doctor)
 - ✅ Structured logging with progressive profiles (via gofulmen)
-- ✅ Three-layer configuration management (Crucible → User → Runtime)
+- ✅ Three-layer configuration with canonical/alias env var ergonomics
 - ✅ Graceful shutdown and signal handling
 - ✅ Observability and telemetry built-in
 - ✅ CRDL philosophy: Clone → Degit → Refit → Launch
@@ -72,11 +74,12 @@ forge-workhorse-groningen/
 │   │   └── doctor.go           # Diagnostics
 │   ├── server/                 # HTTP server implementation
 │   │   ├── server.go
-│   │   ├── routes.go
 │   │   ├── handlers/           # Health, version, metrics
-│   │   └── middleware/         # Logging, correlation IDs
+│   │   ├── middleware/         # Logging, correlation IDs
+│   │   ├── auth/              # Data plane auth middleware + route policy
+│   │   └── control/           # Control plane server + handlers
 │   ├── core/                   # Business logic (your code here)
-│   ├── config/                 # Config management
+│   ├── config/                 # Config management + env var mappings
 │   └── observability/          # Logging, metrics setup
 ├── config/
 │   └── groningen/
@@ -88,7 +91,9 @@ forge-workhorse-groningen/
 │           └── config.schema.json       # Config validation schema
 ├── docs/
 │   ├── groningen-overview.md     # Template architecture and components
+│   ├── schema-validation.md      # JSONSchema multi-draft guide
 │   ├── metrics.md                # Telemetry/metrics notes
+│   ├── decisions/                # Architecture Decision Records (ADRs)
 │   ├── releases/                 # Release notes by version
 │   └── development/              # Development guides
 │       ├── README.md             # Development handbook and workflows
@@ -111,17 +116,17 @@ forge-workhorse-groningen/
 
 ```bash
 # Server management
-groningen serve                 # Start HTTP server
-groningen serve --port 9000     # Custom port
+groningen serve                 # Start data plane + control plane
+groningen serve --port 9000     # Custom data plane port
 
 # Information commands
 groningen version               # Basic version
 groningen version --extended    # Full version + SSOT info
 groningen health                # Self-check
-groningen envinfo               # Dump config/env/SSOT
+groningen envinfo               # Config, env var mapping table, SSOT
 
 # Diagnostics
-groningen doctor                # Run checks, suggest fixes
+groningen doctor                # Run checks: env conflicts, auth, control plane
 ```
 
 ## Configuration
@@ -168,18 +173,23 @@ Validation happens on load and reload. Invalid configuration prevents applicatio
 
 ### Environment Variables
 
-All env vars use the prefix from app identity (default: `GRONINGEN_`):
+All env vars use the prefix from app identity (default: `GRONINGEN_`). Both canonical (nested) and alias (short) forms are supported:
 
-```bash
-GRONINGEN_PORT=8080
-GRONINGEN_HOST=localhost
-GRONINGEN_LOG_LEVEL=info
-GRONINGEN_METRICS_PORT=9090
-GRONINGEN_CONTROL_PLANE_BEARER_TOKEN=your-secret-token  # For control plane endpoint (see below)
-# ... see .env.example for full list
-```
+| Canonical (nested)                     | Alias (short)                        | Config Path                |
+| -------------------------------------- | ------------------------------------ | -------------------------- |
+| `GRONINGEN_SERVER_HOST`                | `GRONINGEN_HOST`                     | `server.host`              |
+| `GRONINGEN_SERVER_PORT`                | `GRONINGEN_PORT`                     | `server.port`              |
+| `GRONINGEN_LOGGING_LEVEL`              | `GRONINGEN_LOG_LEVEL`                | `logging.level`            |
+| `GRONINGEN_LOGGING_PROFILE`            | `GRONINGEN_LOG_PROFILE`              | `logging.profile`          |
+| `GRONINGEN_CONTROL_PLANE_PORT`         | `GRONINGEN_CONTROLPLANE_PORT`        | `controlPlane.port`        |
+| `GRONINGEN_CONTROL_PLANE_BEARER_TOKEN` | `GRONINGEN_CONTROLPLANE_BEARERTOKEN` | `controlPlane.bearerToken` |
+| `GRONINGEN_DATA_PLANE_AUTH_ENABLED`    | `GRONINGEN_DATAPLANEAUTH_ENABLED`    | `dataPlaneAuth.enabled`    |
 
-Copy `.env.example` to `.env` and customize for local development.
+**Conflict detection**: If both canonical and alias are set with different values, a warning is logged and the alias takes precedence. Run `groningen doctor` to detect conflicts, or `groningen envinfo` for a full mapping table.
+
+**Sensitive value masking**: Values for env vars containing `TOKEN`, `SECRET`, `PASSWORD`, or `KEY` are displayed as `[set]` in diagnostic output.
+
+Copy `.env.example` to `.env` and customize for local development. See `.env.example` for the full list with both canonical and alias forms.
 
 ## Development
 
@@ -333,8 +343,8 @@ groningen serve
 
 **Shutdown Sequence** (LIFO order):
 
-1. Stop accepting new connections
-2. Shutdown HTTP server (wait for in-flight requests)
+1. Stop accepting new connections on both data plane and control plane
+2. Shutdown HTTP servers (wait for in-flight requests)
 3. Flush logger (ensure all logs written)
 4. Exit cleanly
 
@@ -350,23 +360,31 @@ kill -HUP $(pgrep groningen)
 # Some changes may still require restart (e.g., port changes)
 ```
 
-### Control Plane (Optional)
+### Control Plane
 
-Enable operational control endpoints on a dedicated control plane server (separate from the primary API surface):
+A dedicated operational server runs on a separate port from the data plane, enforcing security isolation:
+
+```
+Data Plane (0.0.0.0:8080)    Control Plane (127.0.0.1:9091)
+├── /health/*                 ├── /control/           (discovery)
+├── /version                  ├── /control/signal     (signal injection)
+├── /metrics                  └── /control/config/reload
+└── /* (your routes)
+```
 
 ```yaml
 controlPlane:
-  enabled: true
-  host: 127.0.0.1
+  enabled: true # Enabled by default
+  host: 127.0.0.1 # Loopback by default (safe)
   port: 9091
   basePath: /control
-  bearerToken: your-secret-token
+  bearerToken: "" # Required if host is not loopback
 ```
 
 ```bash
 groningen serve
 
-# Trigger config reload (SIGHUP)
+# Trigger config reload
 curl -X POST http://127.0.0.1:9091/control/config/reload \
   -H "Authorization: Bearer your-secret-token"
 
@@ -376,7 +394,43 @@ curl -X POST http://127.0.0.1:9091/control/signal \
   -d '{"signal": "SIGHUP"}'
 ```
 
-**Security**: Keep control plane bound to loopback by default. If you bind to a non-loopback interface, configure a strong bearer token and restrict network access.
+**Security**: Control plane binds to loopback by default. If you bind to a non-loopback interface, a bearer token MUST be configured. See [ADR-0001](docs/decisions/ADR-0001-control-plane-data-plane-split.md) and [ADR-0002](docs/decisions/ADR-0002-control-plane-auth-localhost.md) for design rationale.
+
+### Data Plane Auth (Optional)
+
+Optional starter authentication for the primary API surface. Disabled by default. Designed as an on-ramp — CDRL users are expected to replace with their preferred auth strategy (OAuth, JWT, etc.).
+
+**Auth modes**: `disabled` (default), `bearerToken`, `basicAuth`
+
+**Route policy** with longest-prefix matching:
+
+| Category      | Behavior                                             |
+| ------------- | ---------------------------------------------------- |
+| `deny`        | Return 404 (hide route existence)                    |
+| `public`      | No auth required                                     |
+| `conditional` | Auth optional; handlers get auth context if provided |
+| `protected`   | 401 if not authenticated                             |
+
+```yaml
+dataPlaneAuth:
+  enabled: false # Disabled by default
+  mode: disabled # disabled | bearerToken | basicAuth
+  bearerToken: ""
+  basicAuth:
+    username: ""
+    password: ""
+  routePolicy:
+    - prefix: /health
+      category: public
+    - prefix: /version
+      category: public
+    - prefix: /metrics
+      category: conditional
+    - prefix: /
+      category: protected # Catch-all
+```
+
+Handlers can inspect auth state via `auth.Get(r.Context())` for conditional logic. See [ADR-0003](docs/decisions/ADR-0003-data-plane-auth-route-policy.md) for design rationale.
 
 ### Exit Codes
 
@@ -473,25 +527,30 @@ These helpers are wired into the chi router for 404/405 cases and can be reused 
 
 ## Current Status
 
-✅ **v0.1.0 Complete** - Production-ready workhorse template
+✅ **v0.1.10** - Production-ready workhorse template
 
 - [x] Project structure and dependencies
 - [x] Root command with global flags
 - [x] Configuration management (gofulmen/config + three-layer pattern)
-- [x] Serve command (HTTP server with chi)
+- [x] Canonical/alias env var ergonomics with conflict detection
+- [x] Serve command (data plane + control plane)
+- [x] Control plane with signal injection and config reload
+- [x] Optional data plane auth (bearer token, basic auth, route policy)
 - [x] Health endpoints (live, ready, startup)
 - [x] Version endpoint (full build info)
 - [x] Metrics endpoint with Prometheus
-- [x] Graceful shutdown with signal handling
+- [x] Graceful shutdown with signal handling (both planes)
 - [x] Version command (basic + extended)
 - [x] Health command (CLI self-check)
-- [x] Envinfo command
-- [x] Doctor command
+- [x] Envinfo command (env var mapping table, sensitive masking)
+- [x] Doctor command (env conflicts, auth/control plane validation)
 - [x] App Identity integration
 - [x] Exit codes with semantic meanings
 - [x] Request ID correlation middleware
 - [x] Standardized error handling
-- [x] Config reload via SIGHUP
+- [x] Config reload via SIGHUP (signal or control plane)
+- [x] Full JSONSchema multi-draft support (Draft-04 through 2020-12)
+- [x] Architecture Decision Records
 - [x] Integration with gofulmen logging
 - [x] Integration with gofulmen telemetry
 - [x] Comprehensive tests
@@ -512,6 +571,7 @@ See [MAINTAINERS.md](MAINTAINERS.md) for governance and project team information
 ### Documentation
 
 - [Template Overview](docs/groningen-overview.md) - Comprehensive guide to template architecture and components
+- [Schema Validation Guide](docs/schema-validation.md) - JSONSchema multi-draft support (Draft-04 through 2020-12)
 - [Architecture Decisions (ADRs)](docs/decisions/README.md) - Key design decisions and trade-offs for CDRL users
 - [Developer Handbook](docs/development/README.md) - Development setup and workflows
 - [Development Guides](docs/development/) - Focused guides for specific topics
