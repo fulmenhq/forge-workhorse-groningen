@@ -527,7 +527,7 @@ These helpers are wired into the chi router for 404/405 cases and can be reused 
 
 ## Current Status
 
-✅ **v0.1.10** - Production-ready workhorse template
+✅ **v0.1.11** - Production-ready workhorse template
 
 - [x] Project structure and dependencies
 - [x] Root command with global flags

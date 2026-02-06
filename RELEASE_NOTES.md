@@ -4,6 +4,19 @@ This document tracks release notes for forge-workhorse-groningen releases.
 
 > **Convention**: Keep only the latest 3 releases here to prevent file bloat. Older releases are archived in `docs/releases/`.
 
+## [0.1.11] - 2026-02-05
+
+### Versioning Correction
+
+**Release Type**: Patch (Version Correction)
+**Status**: ✅ Released
+
+v0.1.10 was released without a VERSION bump. This release corrects the version number. All feature content is identical to v0.1.10.
+
+Full details: [`docs/releases/v0.1.11.md`](docs/releases/v0.1.11.md)
+
+---
+
 ## [0.1.10] - 2026-02-05
 
 ### Control Plane, Starter Auth, Env Var Ergonomics, Diagnostics, Schema Flavors, ADRs
@@ -74,27 +87,3 @@ This patch smooths the release signing workflow by standardizing `release-*` tar
 #### Migration Notes
 
 No migration required for template consumers.
-
----
-
-## [0.1.8] - 2025-12-19
-
-### Embedded App Identity for Standalone Binaries (Patch)
-
-**Release Type**: Patch Release (Artifact Contract + CDRL Reliability)
-**Status**: ✅ Released
-
-#### Overview
-
-This patch makes the template’s built artifacts self-identifying by embedding app identity at build time. Basic CLI commands (like `version` and `--help`) now work when the binary is executed outside a repo checkout (e.g. copied to `/tmp` or installed on another machine) without requiring `.fulmen/app.yaml` to exist on disk.
-
-#### Key Changes
-
-- **Embedded identity fallback**: Mirrors `.fulmen/app.yaml` into an embeddable in-module path and registers it via gofulmen’s `RegisterEmbeddedIdentityYAML` so identity resolution works anywhere.
-- **Drift guardrails**: Added `sync-embedded-identity` and `verify-embedded-identity` targets and wired sync into `build`, `test`, and `release-build`.
-- **Conformance test**: Added an integration test that builds and runs the binary from a temp directory to prevent regressions.
-- **Dependencies**: gofulmen v0.1.24 (Crucible v0.2.25 transitively).
-
-#### Migration Notes
-
-No migration required for template consumers. CDRL consumers should continue editing `.fulmen/app.yaml` as the SSOT; the build tooling keeps the embedded mirror in sync.

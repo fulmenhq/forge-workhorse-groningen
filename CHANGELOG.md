@@ -6,6 +6,12 @@ All notable changes to this project will be documented in this file. Older entri
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-02-05
+
+### Fixed
+
+- **Versioning**: v0.1.10 was released without a VERSION bump. This release corrects the version number. All feature content is identical to v0.1.10.
+
 ## [0.1.10] - 2026-02-05
 
 ### Added
@@ -127,16 +133,3 @@ All notable changes to this project will be documented in this file. Older entri
 - **Security**: Pathfinder provides home directory ceiling, symlink loop detection, and multi-tenant isolation
 - **Performance**: Repository root discovery now <30µs (well under spec targets)
 - **Code Quality**: Removed 22 lines of duplicate code, resolved TODO comment
-
-## [0.1.1] - 2025-11-15
-
-### Fixed
-
-- **Documentation Accuracy**: Corrected version references, removed WIP markers, fixed binary name references
-- **CDRL Instructions**: Updated config/schema path guidance to reference comprehensive CDRL guide
-- **Links**: Fixed broken internal links and removed references to non-public Crucible paths
-
-### Changed
-
-- **Version References**: Updated gofulmen v0.1.10 → v0.1.14, crucible v0.2.8 → v0.2.14 throughout documentation
-- **Binary Name**: Corrected all CLI examples to use `groningen` instead of `workhorse`
